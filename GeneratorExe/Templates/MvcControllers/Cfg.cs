@@ -13,6 +13,7 @@ namespace CodeGeneration.MvcControllers {
     public string customAttributesPerControllerMethod = null;
     public bool fillFaultPropertyOnException = false;
     public string exceptionDisplay = "ex.Message";
+    public string routePrefix = "";
 
   }
 

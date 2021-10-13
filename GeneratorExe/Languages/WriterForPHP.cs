@@ -12,12 +12,14 @@ namespace CodeGeneration.Languages {
     public WriterForPHP(TextWriter targetWriter, CodeWritingSettings cfg) : base(targetWriter, cfg) {
     }
     public override void WriteImport(string @namespace) {
-      this.WriteLine($"#using {@namespace};");
+      this.WriteLine($"use \\{@namespace};");
     }
 
     public override void WriteBeginNamespace(string name) {
       name = this.Escape(name);
-      this.WriteLineAndPush($"#namespace {name} {{");
+      this.WriteLineAndPush($"namespace {name}");
+
+      //separator ist \
     }
 
     public override void WriteEndNamespace() {

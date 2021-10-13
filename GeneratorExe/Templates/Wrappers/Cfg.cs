@@ -10,6 +10,10 @@ namespace CodeGeneration.Wrappers {
 
     public bool generateFaultProperty = false;
 
+    public int removeLeadingCharCountForOwnerName = 0;
+    public int removeTrailingCharCountForOwnerName = 0;
+    public bool appendOwnerNameAsNamespace = false;
+
   }
 
 }

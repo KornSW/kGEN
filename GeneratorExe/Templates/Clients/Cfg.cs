@@ -12,6 +12,10 @@ namespace CodeGeneration.Clients {
     public string authHeaderName = "Authorization";
     public bool throwClientExecptionsFromFaultProperty = false;
 
+    public int removeLeadingCharCountForOwnerName = 0;
+    public int removeTrailingCharCountForOwnerName = 0;
+    public bool appendOwnerNameAsNamespace = false;
+
   }
 
 }

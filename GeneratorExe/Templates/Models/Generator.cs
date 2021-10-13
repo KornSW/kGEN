@@ -16,9 +16,9 @@ namespace CodeGeneration.Models {
 
     public void Generate(CodeWriterBase writer, Cfg cfg) {
 
-      if (writer.GetType() != typeof(WriterForCS)) {
-        throw new Exception("For the selected template is currenty only language 'C#' supported!");
-      }
+      //if (writer.GetType() != typeof(WriterForCS)) {
+      //  throw new Exception("For the selected template is currenty only language 'C#' supported!");
+      //}
 
       var nsImports = new List<string>();
       nsImports.Add("System");

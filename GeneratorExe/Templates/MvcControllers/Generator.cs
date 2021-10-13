@@ -81,7 +81,9 @@ namespace CodeGeneration.MvcControllers {
         if(!string.IsNullOrWhiteSpace(cfg.generateGroupName)) {
           writer.WriteLine($"[ApiExplorerSettings(GroupName = \"{cfg.generateGroupName}\")]");
         }
-        writer.WriteLine($"[Route(\"{writer.Ftl(endpointName)}\")]");
+
+        writer.WriteLine($"[Route(\"{cfg.routePrefix + writer.Ftl(endpointName)}\")]");
+
         writer.WriteLineAndPush($"public partial class {endpointName}Controller : ControllerBase {{");
         writer.WriteLine();
         writer.WriteLine($"private readonly ILogger<{endpointName}Controller> _Logger;");

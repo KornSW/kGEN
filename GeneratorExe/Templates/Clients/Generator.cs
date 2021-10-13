@@ -46,6 +46,23 @@ namespace CodeGeneration.Clients {
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace) && cfg.customImports.Contains(cfg.outputNamespace)) {
         nsImports.Remove(cfg.outputNamespace);
       }
+
+      if (cfg.appendOwnerNameAsNamespace) {
+        foreach (Type svcInt in svcInterfaces) {
+          var name = svcInt.Name;
+          if (cfg.removeLeadingCharCountForOwnerName > 0 && name.Length >= cfg.removeLeadingCharCountForOwnerName) {
+            name = name.Substring(cfg.removeLeadingCharCountForOwnerName);
+          }
+          if (cfg.removeTrailingCharCountForOwnerName > 0 && name.Length >= cfg.removeTrailingCharCountForOwnerName) {
+            name = name.Substring(0, name.Length - cfg.removeTrailingCharCountForOwnerName);
+          }
+          if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
+            name = cfg.outputNamespace  + "." + name;
+          }
+          nsImports.Add(name);
+        }
+      }
+
       foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
         writer.WriteImport(import);
       }
@@ -77,6 +94,7 @@ namespace CodeGeneration.Clients {
       writer.PopAndWriteLine("}");
 
       foreach (Type svcInt in svcInterfaces) {
+
         string endpointName = svcInt.Name;
         if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
           endpointName = endpointName.Substring(1);
@@ -104,6 +122,18 @@ namespace CodeGeneration.Clients {
           endpointName = endpointName.Substring(1);
         }
         string svcIntDoc = XmlCommentAccessExtensions.GetDocumentation(svcInt);
+
+        if (cfg.appendOwnerNameAsNamespace) {
+          var name = svcInt.Name;
+          if (cfg.removeLeadingCharCountForOwnerName > 0 && name.Length >= cfg.removeLeadingCharCountForOwnerName) {
+            name = name.Substring(cfg.removeLeadingCharCountForOwnerName);
+          }
+          if (cfg.removeTrailingCharCountForOwnerName > 0 && name.Length >= cfg.removeTrailingCharCountForOwnerName) {
+            name = name.Substring(0, name.Length - cfg.removeTrailingCharCountForOwnerName);
+          }
+          writer.WriteLine();
+          writer.WriteLineAndPush("namespace " + name + " {");
+        }
 
         writer.WriteLine();
         if (!String.IsNullOrWhiteSpace(svcIntDoc)) {
@@ -252,6 +282,11 @@ namespace CodeGeneration.Clients {
 
         writer.WriteLine();
         writer.PopAndWriteLine("}"); //class
+
+        if (cfg.appendOwnerNameAsNamespace) {
+          writer.WriteLine();
+          writer.PopAndWriteLine("}");
+        }
 
       }//foreach Interface
 

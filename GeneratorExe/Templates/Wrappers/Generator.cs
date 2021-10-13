@@ -50,6 +50,18 @@ namespace CodeGeneration.Wrappers {
       //var wrappers = new Dictionary<String, StringBuilder>();
       foreach (Type svcInt in svcInterfaces) {
 
+        if (cfg.appendOwnerNameAsNamespace) {
+          var name = svcInt.Name;
+          if(cfg.removeLeadingCharCountForOwnerName > 0 && name.Length >= cfg.removeLeadingCharCountForOwnerName) {
+            name = name.Substring(cfg.removeLeadingCharCountForOwnerName);
+          }
+          if (cfg.removeTrailingCharCountForOwnerName > 0 && name.Length >= cfg.removeTrailingCharCountForOwnerName) {
+            name = name.Substring(0, name.Length - cfg.removeTrailingCharCountForOwnerName);
+          }
+          wrapperContent.AppendLine();
+          wrapperContent.AppendLine("namespace " + name + " {");
+        }
+
         //if(!nsImports.Contains(svcInt.Namespace)){
         //  nsImports.Add(svcInt.Namespace);
         //}
@@ -199,6 +211,11 @@ namespace CodeGeneration.Wrappers {
           wrapperContent.Append(responseWrapperContent);
 
         }//foreach Method
+
+        if (cfg.appendOwnerNameAsNamespace) {
+          wrapperContent.AppendLine();
+          wrapperContent.AppendLine("}");
+        }
 
       }//foreach Interface
 

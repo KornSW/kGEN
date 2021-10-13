@@ -27,8 +27,8 @@
            },
 
            // Output:
-           template = "Wrappers",     // <- choose between: Models|Wrappers|MvcControllers|Clients|Interfaces
-           outputLanguage = "C#",   // <- choose between: C#|VB|TS|PHP
+           template = "Models",     // <- choose between: Models|Wrappers|MvcControllers|Clients|Interfaces
+           outputLanguage = "CS",   // <- choose between: C#|VB|TS|PHP
            indentDepthPerLevel = 2,
            outputNamespace = "MyBusinessNamespace.WebApi",
            customImports = new String[] {
@@ -51,22 +51,32 @@
 
             generateFaultProperty = true,
 
+            //appendOwnerNameAsNamespace = true,
+            //removeLeadingCharCountForOwnerName = 1,
+            //removeTrailingCharCountForOwnerName = 0,
+
          // MVC-CONTROLLERS ///////////////////////////////////////////////////////////////////
            
            generateSwashbuckleAttributesForControllers = true,
-           generateGroupName="",
+           generateGroupName="", //for the api-explorer
 
            customAttributesPerControllerMethod = "RequireBaererAuth(\"{C}/{O}\")",
 
            fillFaultPropertyOnException = true,
            exceptionDisplay = "ex.Message", //change this into an extension-method to do some
-           //                                    custom evaluation before exposing too much details
+           //                                 custom evaluation before exposing too much details
+
+           routePrefix = "",
 
          // CLIENTS ///////////////////////////////////////////////////////////////////////////
 
            connectorClassName = "DemoConnector",
            authHeaderName = "Authorization",
            throwClientExecptionsFromFaultProperty = true,
+
+           appendOwnerNameAsNamespace = true,
+           removeLeadingCharCountForOwnerName = 1,
+           removeTrailingCharCountForOwnerName = 0,
 
          // INTERFACES ////////////////////////////////////////////////////////////////////////
  
