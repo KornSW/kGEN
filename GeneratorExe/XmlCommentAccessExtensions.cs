@@ -142,7 +142,7 @@ namespace System.Reflection {
       string directoryPath = assembly.GetDirectoryPath();
       string xmlFilePath = Path.Combine(directoryPath, assembly.GetName().Name + ".xml");
       if (File.Exists(xmlFilePath)) {
-        ReadXmlDocumentation(File.ReadAllText(xmlFilePath));
+        ReadXmlDocumentation(File.ReadAllText(xmlFilePath,System.Text.Encoding.Default));
         loadedAssemblies.Add(assembly);
       }
       else {

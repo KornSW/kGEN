@@ -22,6 +22,8 @@ namespace CodeGeneration {
     //DEBUGGING
     public int waitForDebuggerSec = 0;
 
+    public string codeGenInfoHeader = "WARNING: THIS IS GENERATED CODE - PLEASE DONT EDIT DIRECTLY - YOUR CHANGES WILL BE LOST!";
+
   }
 
 }

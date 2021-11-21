@@ -15,6 +15,10 @@ namespace CodeGeneration.MvcControllers {
     public string exceptionDisplay = "ex.Message";
     public string routePrefix = "";
 
+    public bool useInterfaceTypeNameToGenerateSubNamespace = false;
+    public int removeLeadingCharCountForSubNamespace = 0;
+    public int removeTrailingCharCountForSubNamespace = 0;
+
   }
 
 }

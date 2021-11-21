@@ -1,4 +1,6 @@
-﻿using System;
+﻿using CodeGeneration.Inspection;
+using CodeGeneration.Languages;
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +15,7 @@ namespace CodeGeneration.Languages {
     private CodeWritingSettings _Cfg;
     private int _CurrentIndentLevel = 0;
 
-    public static CodeWriterBase GetForLanguage(string lang,TextWriter target,CodeWritingSettings settings) {
+    public static CodeWriterBase GetForLanguage(string lang,TextWriter target, CodeWritingSettings settings) {
       if (lang == "C#" || lang == "CS") {
         return new WriterForCS(target, settings);
       }
@@ -28,6 +30,12 @@ namespace CodeGeneration.Languages {
       }
       else {
         throw new Exception($"Unknown Language '{lang}' ");
+      }
+    }
+
+    protected CodeWritingSettings Cfg {
+      get {
+        return _Cfg;
       }
     }
 
@@ -131,28 +139,117 @@ namespace CodeGeneration.Languages {
       }
       return input;
     }
-    public abstract void WriteImport(string @namespace);
-    public abstract void WriteBeginNamespace(string name);
-    public abstract void WriteEndNamespace();
+
+    public abstract void BeginFile();
+    public abstract void EndFile();
+    public abstract void Import(string @namespace);
+    public abstract void BeginNamespace(string name);
+    public abstract void EndNamespace();
 
 
-    public abstract void BeginClass(string typeName,string inherits = null);
-    public abstract void BeginInterface(string typeName, string inherits = null);
+    public abstract void BeginClass(AccessModifier access, string typeName, string inherits = null, bool partial = false);
+    public abstract void BeginInterface(AccessModifier access, string typeName, string inherits = null, bool partial = false);
 
     public abstract void EndClass();
     public abstract void EndInterface();
-    public abstract void Summary(string text, bool multiLine);
+
+
+    public abstract void BeginMethod(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false);
+    public abstract void EndMethod();
+
+    public abstract void Comment(string text, bool dumpToSingleLine = false);
+    public abstract void Summary(string text, bool dumpToSingleLine);
     public abstract void AttributesLine(params string[] attribs);
 
     public abstract void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null);
 
+    public string EscapeTypeName(Type t) {
+
+      if(t == null) {
+        return "";
+      }
+
+      if (t.IsArray) {
+        Type et = t.GetElementType();
+        string etName = this.EscapeTypeName(et);
+        return this.GetArrayTypeName(etName);
+      }
+      else {
+
+        bool isNullable = (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>));
+        if (isNullable) {
+          Type nt = t.GetGenericArguments()[0];
+          string ntName = this.EscapeTypeName(nt);
+          return this.GetNullableTypeName(ntName);
+        }
+        else {
+
+          CommonType ct = CommonType.String;
+          if (this.TryResolveToCommonType(t,ref ct)) {
+            return this.GetCommonTypeName(ct);
+          }
+          else {
+            return t.Name;
+          }
+
+        }
+
+      }
+    }
+
+    public void Field(CommonType t, string fieldName, string defaultValue = null ,bool readOnly = false) {
+      this.Field(this.GetCommonTypeName(t), fieldName, defaultValue, readOnly);
+    }
+    public abstract void Field(string typeName, string fieldName, string defaultValue = null, bool readOnly = false);
+
     public abstract string GetAccessModifierString(AccessModifier access);
-
-
     public abstract string GetCommonTypeName(CommonType t);
     public abstract string GetGenericTypeName(string sourceTypeName,params string[] genericArguments);
     public abstract string GetArrayTypeName(string sourceTypeName);
     public abstract string GetNullableTypeName(string sourceTypeName);
+
+    public bool TryResolveToCommonType(Type t, ref CommonType commonType) {
+      if (t == typeof(string)) {
+        commonType = CommonType.String;
+      }
+      else if (t == typeof(bool)) {
+        commonType = CommonType.Boolean;
+      }
+      else if (t == typeof(string)) {
+        commonType = CommonType.String;
+      }
+      else if (t == typeof(byte)) {
+        commonType = CommonType.Byte;
+      }
+      else if (t == typeof(Int32)) {
+        commonType = CommonType.Int32;
+      }
+      else if (t == typeof(Int16)) {
+        commonType = CommonType.Int16;
+      }
+      else if (t == typeof(Int64)) {
+        commonType = CommonType.Int64;
+      }
+      else if (t == typeof(Decimal)) {
+        commonType = CommonType.Decimal;
+      }
+      else if (t == typeof(Double)) {
+        commonType = CommonType.Double;
+      }
+      else if (t == typeof(DateTime)) {
+        commonType = CommonType.DateTime;
+      }
+      else if (t == typeof(Guid)) {
+        commonType = CommonType.Guid;
+      }
+      else if (t == typeof(object)) {
+        commonType = CommonType.Object;
+      }
+      else {
+        return false;
+      }
+      return true;
+    }
 
   }
 
@@ -166,17 +263,19 @@ namespace CodeGeneration.Languages {
     Absttract = 16
   }
 
+
   public enum CommonType {
-    String = 0,
-    Boolean = 1,
-    Byte = 2,
-    Int16 = 3,
-    Int32 = 4,
-    Int64 = 5,
-    Decimal = 6,
-    Double = 7,
-    DateTime = 8,
-    Guid = 9
+    Object = 0,
+    String = 1,
+    Boolean = 2,
+    Byte = 3,
+    Int16 = 4,
+    Int32 = 5,
+    Int64 = 6,
+    Decimal =7,
+    Double = 8,
+    DateTime =9,
+    Guid = 10,
   }
 
 }

@@ -8,6 +8,13 @@ namespace CodeGeneration.Inspection {
 
   internal static class InspectionExtensions {
 
+    public static Type Obj2Null(this Type extendee) {
+      if(extendee == null || extendee == typeof(Object)) {
+        return null;
+      }
+      return extendee;
+    }
+
     public static string GetTypeNameSave(this Type extendee, out bool isNullable) {
 
       isNullable = (extendee.IsGenericType && extendee.GetGenericTypeDefinition() == typeof(Nullable<>));

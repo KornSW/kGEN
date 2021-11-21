@@ -32,6 +32,13 @@ namespace CodeGeneration.Wrappers {
       Program.AddResolvePath(Path.GetDirectoryName(inputFileFullPath));
       Assembly ass = Assembly.LoadFile(inputFileFullPath);
 
+      if (!String.IsNullOrWhiteSpace(cfg.codeGenInfoHeader)) {
+        string header = cfg.codeGenInfoHeader;
+        header = header.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
+        writer.Comment(header);
+        writer.WriteLine();
+      }
+
       Type[] svcInterfaces;
       try {
         svcInterfaces = ass.GetTypes();
@@ -50,13 +57,13 @@ namespace CodeGeneration.Wrappers {
       //var wrappers = new Dictionary<String, StringBuilder>();
       foreach (Type svcInt in svcInterfaces) {
 
-        if (cfg.appendOwnerNameAsNamespace) {
+        if (cfg.useInterfaceTypeNameToGenerateSubNamespace) {
           var name = svcInt.Name;
-          if(cfg.removeLeadingCharCountForOwnerName > 0 && name.Length >= cfg.removeLeadingCharCountForOwnerName) {
-            name = name.Substring(cfg.removeLeadingCharCountForOwnerName);
+          if(cfg.removeLeadingCharCountForSubNamespace > 0 && name.Length >= cfg.removeLeadingCharCountForSubNamespace) {
+            name = name.Substring(cfg.removeLeadingCharCountForSubNamespace);
           }
-          if (cfg.removeTrailingCharCountForOwnerName > 0 && name.Length >= cfg.removeTrailingCharCountForOwnerName) {
-            name = name.Substring(0, name.Length - cfg.removeTrailingCharCountForOwnerName);
+          if (cfg.removeTrailingCharCountForSubNamespace > 0 && name.Length >= cfg.removeTrailingCharCountForSubNamespace) {
+            name = name.Substring(0, name.Length - cfg.removeTrailingCharCountForSubNamespace);
           }
           wrapperContent.AppendLine();
           wrapperContent.AppendLine("namespace " + name + " {");
@@ -212,7 +219,7 @@ namespace CodeGeneration.Wrappers {
 
         }//foreach Method
 
-        if (cfg.appendOwnerNameAsNamespace) {
+        if (cfg.useInterfaceTypeNameToGenerateSubNamespace) {
           wrapperContent.AppendLine();
           wrapperContent.AppendLine("}");
         }
@@ -224,12 +231,12 @@ namespace CodeGeneration.Wrappers {
         nsImports.Remove(cfg.outputNamespace);
       }
       foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
-        writer.WriteImport(import);
+        writer.Import(import);
       }
 
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
         writer.WriteLine();
-        writer.WriteBeginNamespace(cfg.outputNamespace);
+        writer.BeginNamespace(cfg.outputNamespace);
       }
 
       using (var sr = new StringReader(wrapperContent.ToString())) {
@@ -242,7 +249,7 @@ namespace CodeGeneration.Wrappers {
 
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
         writer.WriteLine();
-        writer.WriteEndNamespace();
+        writer.EndNamespace();
       }
 
     }

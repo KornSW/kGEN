@@ -11,6 +11,13 @@ namespace CodeGeneration.Languages {
     /// <summary> number of spaces per level </summary>
     public int indentDepthPerLevel { get; set; } = 4;
 
+    #region " PHP Specific " 
+    
+    public bool GenerateTypeNamesInPhp { get; set; } = true;
+
+    #endregion
+
+
   }
 
 }

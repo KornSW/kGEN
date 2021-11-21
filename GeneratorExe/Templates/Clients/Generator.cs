@@ -30,6 +30,13 @@ namespace CodeGeneration.Clients {
       Program.AddResolvePath(Path.GetDirectoryName(inputFileFullPath));
       Assembly ass = Assembly.LoadFile(inputFileFullPath);
 
+      if (!String.IsNullOrWhiteSpace(cfg.codeGenInfoHeader)) {
+        string header = cfg.codeGenInfoHeader;
+        header = header.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
+        writer.Comment(header);
+        writer.WriteLine();
+      }
+
       Type[] svcInterfaces;
       try {
         svcInterfaces = ass.GetTypes();
@@ -64,12 +71,12 @@ namespace CodeGeneration.Clients {
       }
 
       foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
-        writer.WriteImport(import);
+        writer.Import(import);
       }
 
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
         writer.WriteLine();
-        writer.WriteBeginNamespace(cfg.outputNamespace);
+        writer.BeginNamespace(cfg.outputNamespace);
       }
 
       writer.WriteLine();
@@ -292,7 +299,7 @@ namespace CodeGeneration.Clients {
 
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
         writer.WriteLine();
-        writer.WriteEndNamespace();
+        writer.EndNamespace();
       }
 
     }

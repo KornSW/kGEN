@@ -11,27 +11,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace CodeGeneration.MvcControllers {
+namespace CodeGeneration.Interfaces {
 
   public class Generator {
 
     public void Generate(CodeWriterBase writer, Cfg cfg) {
 
-      if(writer.GetType() != typeof(WriterForCS)) {
-        throw new Exception("For the selected template is currenty only language 'CS' supported!");
-      }
-
       var nsImports = new List<string>();
-      nsImports.Add("Microsoft.AspNetCore.Mvc");
-      nsImports.Add("Microsoft.Extensions.Logging");
-      nsImports.Add("Security");
-      if (cfg.generateSwashbuckleAttributesForControllers) {
-        nsImports.Add("Swashbuckle.AspNetCore.Annotations");
-      }
-      nsImports.Add("System");
-      nsImports.Add("System.Collections.Generic");
-      nsImports.Add("System.Linq");
-      nsImports.Add("System.Net");
 
       var inputFileFullPath = Path.GetFullPath(cfg.inputFile);
       Program.AddResolvePath(Path.GetDirectoryName(inputFileFullPath));
@@ -74,18 +60,6 @@ namespace CodeGeneration.MvcControllers {
       //var wrappers = new Dictionary<String, StringBuilder>();
       foreach (Type svcInt in svcInterfaces) {
 
-        if (cfg.useInterfaceTypeNameToGenerateSubNamespace) {
-          var name = svcInt.Name;
-          if (cfg.removeLeadingCharCountForSubNamespace > 0 && name.Length >= cfg.removeLeadingCharCountForSubNamespace) {
-            name = name.Substring(cfg.removeLeadingCharCountForSubNamespace);
-          }
-          if (cfg.removeTrailingCharCountForSubNamespace > 0 && name.Length >= cfg.removeTrailingCharCountForSubNamespace) {
-            name = name.Substring(0, name.Length - cfg.removeTrailingCharCountForSubNamespace);
-          }
-          writer.WriteLine();
-          writer.BeginNamespace(name);
-        }
-
         //if(!nsImports.Contains(svcInt.Namespace)){
         //  nsImports.Add(svcInt.Namespace);
         //}
@@ -97,26 +71,9 @@ namespace CodeGeneration.MvcControllers {
         }
 
         writer.WriteLine();
-        writer.AttributesLine("ApiController");
-        if (!string.IsNullOrWhiteSpace(cfg.generateGroupName)) {
-          writer.AttributesLine($"ApiExplorerSettings(GroupName = \"{cfg.generateGroupName}\")");
-        }
 
-        writer.AttributesLine($"Route(\"{cfg.routePrefix + writer.Ftl(endpointName)}\")");
-
-
-        writer.BeginClass(AccessModifier.Public, $"{endpointName}Controller", "ControllerBase", true);
+        writer.BeginInterface(AccessModifier.Public, svcInt.Name);
         writer.WriteLine();
-
-        var gtn = writer.GetGenericTypeName("ILogger", $"{endpointName}Controller");
-        writer.Field(gtn, "Logger", readOnly: true);
-        writer.Field(svcInt.Name, endpointName, readOnly: true);
-        writer.WriteLine();
-
-        writer.WriteLineAndPush($"public {endpointName}Controller(ILogger<{endpointName}Controller> logger, {svcInt.Name} {writer.Ftl(endpointName)}) {{");
-        writer.WriteLine($"_Logger = logger;");
-        writer.WriteLine($"_{endpointName} = {writer.Ftl(endpointName)};");
-        writer.PopAndWriteLine("}");
 
         foreach (MethodInfo svcMth in svcInt.GetMethods()) {
           string svcMthDoc = XmlCommentAccessExtensions.GetDocumentation(svcMth, true);
@@ -128,21 +85,15 @@ namespace CodeGeneration.MvcControllers {
           writer.WriteLine($"/// <summary> {svcMthDoc} </summary>");
           writer.WriteLine($"/// <param name=\"args\"> request capsule containing the method arguments </param>");
 
-          if (!String.IsNullOrWhiteSpace(cfg.customAttributesPerControllerMethod)) {
-            writer.WriteLine("[" + cfg.customAttributesPerControllerMethod.Replace("{C}", endpointName).Replace("{O}", svcMth.Name) + "]");
-          }
-          writer.WriteLine($"[HttpPost(\"{writer.Ftl(svcMth.Name)}\"), Produces(\"application/json\")]");
 
-          string swaggerBodyAttrib = "";
-          if (cfg.generateSwashbuckleAttributesForControllers) {
-            swaggerBodyAttrib = "[SwaggerRequestBody(Required = true)] ";
-            string escDesc = svcMthDoc.Replace("\\", "\\\\").Replace("\"", "\\\"");
-            swaggerBodyAttrib = swaggerBodyAttrib + ($"[SwaggerOperation(OperationId = nameof({svcMth.Name}), Description = \"{escDesc}\")]");
-          }
+          //writer.WriteLine($"[HttpPost(\"{writer.Ftl(svcMth.Name)}\"), Produces(\"application/json\")]");
 
-          writer.WriteLineAndPush($"public {svcMth.Name}Response {svcMth.Name}([FromBody]{swaggerBodyAttrib} {svcMth.Name}Request args) {{");
-          writer.WriteLineAndPush("try {");
-          writer.WriteLine($"var response = new {svcMth.Name}Response();");
+
+
+
+
+
+          writer.WriteLineAndPush($"public {svcMth.Name}Response {svcMth.Name}({svcMth.Name}Request args) {{");
 
           var @params = new List<string>();
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
@@ -195,25 +146,15 @@ namespace CodeGeneration.MvcControllers {
 
           writer.WriteLineAndPush("catch (Exception ex) {");
           writer.WriteLine($"_Logger.LogCritical(ex, ex.Message);");
-          if (cfg.fillFaultPropertyOnException) {
-            writer.WriteLine($"return new {svcMth.Name}Response {{ fault = {cfg.exceptionDisplay} }};");
-          }
-          else {
-            writer.WriteLine($"return new {svcMth.Name}Response();");
-          }
+
           writer.PopAndWriteLine("}");
 
-          writer.PopAndWriteLine("}"); //method
+          writer.EndMethod(); //method
 
         }//foreach Method
 
         writer.WriteLine();
-        writer.PopAndWriteLine("}"); //controller-class
-
-        if (cfg.useInterfaceTypeNameToGenerateSubNamespace) {
-          writer.WriteLine();
-          writer.EndNamespace();
-        }
+        writer.EndInterface();
 
       }//foreach Interface
 
@@ -223,5 +164,6 @@ namespace CodeGeneration.MvcControllers {
       }
 
     }
+
   }
 }

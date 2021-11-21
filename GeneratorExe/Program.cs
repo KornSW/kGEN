@@ -18,6 +18,8 @@ namespace CodeGeneration {
 
       AppDomain.CurrentDomain.AssemblyResolve += AppDomain_AssemblyResolve;
 
+      Console.OutputEncoding = System.Text.Encoding.UTF8;
+
       try {
 
         try {
@@ -65,28 +67,38 @@ namespace CodeGeneration {
         else if (String.Equals(rootCfg.template, "Wrappers", StringComparison.CurrentCultureIgnoreCase)) {
           var templateSpecificCfg  = JsonConvert.DeserializeObject<Wrappers.Cfg>(cfgRawJson);
           var gen = new Wrappers.Generator();
+          langSpecificWriter.BeginFile();
           gen.Generate(langSpecificWriter, templateSpecificCfg);
+          langSpecificWriter.EndFile();
         }
         else if (String.Equals(rootCfg.template, "Models", StringComparison.CurrentCultureIgnoreCase)) {
           var templateSpecificCfg = JsonConvert.DeserializeObject<Models.Cfg>(cfgRawJson);
           var gen = new Models.Generator();
+          langSpecificWriter.BeginFile();
           gen.Generate(langSpecificWriter, templateSpecificCfg);
+          langSpecificWriter.EndFile();
         }
         else if (String.Equals(rootCfg.template, "MvcControllers", StringComparison.CurrentCultureIgnoreCase)) {
           var templateSpecificCfg = JsonConvert.DeserializeObject<MvcControllers.Cfg>(cfgRawJson);
           var gen = new MvcControllers.Generator();
+          langSpecificWriter.BeginFile();
           gen.Generate(langSpecificWriter, templateSpecificCfg);
+          langSpecificWriter.EndFile();
         }
         else if (String.Equals(rootCfg.template, "Clients", StringComparison.CurrentCultureIgnoreCase)) {
           var templateSpecificCfg = JsonConvert.DeserializeObject<Clients.Cfg>(cfgRawJson);
           var gen = new Clients.Generator();
+          langSpecificWriter.BeginFile();
           gen.Generate(langSpecificWriter, templateSpecificCfg);
+          langSpecificWriter.EndFile();
         }
-        //else if (String.Equals(rootCfg.template, "Interfaces", StringComparison.CurrentCultureIgnoreCase)) {
-        //  var templateSpecificCfg = JsonConvert.DeserializeObject<Interfaces.Cfg>(cfgRawJson);
-        //  var gen = new Interfaces.Generator();
-        //  gen.Generate(langSpecificWriter, templateSpecificCfg);
-        //}
+        else if (String.Equals(rootCfg.template, "Interfaces", StringComparison.CurrentCultureIgnoreCase)) {
+          var templateSpecificCfg = JsonConvert.DeserializeObject<Interfaces.Cfg>(cfgRawJson);
+          var gen = new Interfaces.Generator();
+          langSpecificWriter.BeginFile();
+          gen.Generate(langSpecificWriter, templateSpecificCfg);
+          langSpecificWriter.EndFile();
+        }
         else {
           throw new Exception($"Unknown Template '{rootCfg.template}'");
         }
