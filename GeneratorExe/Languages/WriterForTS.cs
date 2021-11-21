@@ -13,6 +13,9 @@ namespace CodeGeneration.Languages {
     public WriterForTS(TextWriter targetWriter, CodeWritingSettings cfg) : base(targetWriter, cfg) {
     }
     public override void Import(string @namespace) {
+      if (@namespace.StartsWith("System")) {
+        return;
+      }
       this.WriteLine($"import {@namespace};");
     }
 
@@ -135,7 +138,7 @@ namespace CodeGeneration.Languages {
 
     public override void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null) {
 
-      var line = $"{this.GetAccessModifierString(access)}{this.Escape(propName)} : {propType} {{ get; set; }}";
+      var line = $"{this.GetAccessModifierString(access)}{this.Ftl(this.Escape(propName))} : {propType} {{ get; set; }}";
 
       if (!string.IsNullOrWhiteSpace(defaultValue)) {
         line = line + " = " + defaultValue + ";";
