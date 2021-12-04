@@ -10,9 +10,9 @@ namespace CodeGeneration.Languages {
 
   public class WriterForCS : CodeWriterBase {
 
-    public WriterForCS(TextWriter targetWriter, CodeWritingSettings cfg) : base(targetWriter, cfg) {
+    public WriterForCS(TextWriter targetWriter, RootCfg cfg) : base(targetWriter, cfg) {
     }
-    public override void Import(string @namespace) {
+    protected override void Import(string @namespace) {
       this.WriteLine($"using {@namespace};");
     }
 
@@ -23,6 +23,10 @@ namespace CodeGeneration.Languages {
 
     public override void EndNamespace() {
       this.PopAndWriteLine("}");
+    }
+
+    protected override string GetSymbolEscapingPattern() {
+      return "@{0}";
     }
 
     private string Escape(string input) {
@@ -60,21 +64,42 @@ namespace CodeGeneration.Languages {
       this.PopAndWriteLine("}");
     }
 
-    public override void BeginMethod(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false) {
+    protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null) {
       methodName = this.Escape(methodName);
       if (string.IsNullOrWhiteSpace(returnTypeName)) {
         returnTypeName = "void";
       }
+
+      string prms = "";
+      if (parameters != null && parameters.Any()) {
+        prms = String.Join(", ", parameters.Select((p) => {
+          if(p.CommonType == CommonType.NotCommon) {
+            return p.CustomType + " " + p.ParamName;
+          }
+          else {
+            return this.GetCommonTypeName(p.CommonType) + " " + p.ParamName;
+          }
+        }).ToArray());
+      }
+     
       if (isInterfaceDeclartion) {
-        this.WriteLine($"{returnTypeName} {methodName}();");
+        this.WriteLine($"{returnTypeName} {methodName}({prms});");
       }
       else {
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}{returnTypeName} {methodName}() {{");
+        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}{returnTypeName} {methodName}({prms}) {{");
       }   
+    }
+
+    public override void Return(string result = null) {
+      this.WriteLine($"return{this.Ppnd(" ", result)};");
     }
 
     public override void EndMethod() {
       this.PopAndWriteLine("}");
+    }
+
+    public override void Assign(string target, string source, string trailingComment = null) {
+      this.WriteLine($"{target} = {source};{this.Ppnd(" // ", trailingComment)}");
     }
 
     public override void Comment(string text, bool dumpToSingleLine = false) {
@@ -88,7 +113,7 @@ namespace CodeGeneration.Languages {
         this.WriteLine($"// " + text.Replace("\n", " ").Replace("  ", " "));
       }
     }
-    public override void Summary(string text, bool dumpToSingleLine) {
+    public override void Summary(string text, bool dumpToSingleLine, MethodParamDescriptor[] parameters = null) {
       if(string.IsNullOrWhiteSpace(text)) {
         return;
       }
@@ -100,6 +125,13 @@ namespace CodeGeneration.Languages {
       else {
         this.WriteLine($"/// <summary> " + text.Replace("\n", " ").Replace("  ", " ") + " </summary>");
       }
+
+      if (parameters != null && parameters.Any()) {
+        foreach (var paramSummary in parameters) {
+          this.WriteLine($"/// <param name=\"{paramSummary.ParamName}\"> " + paramSummary.Description.Replace("\n", " ").Replace("  ", " ") + " </param>");
+        }
+      }
+
     }
 
     public override void AttributesLine(params string[] attribs) {
@@ -173,6 +205,13 @@ namespace CodeGeneration.Languages {
       return sourceTypeName + "?";
     }
     public override void BeginFile() {
+      if (!String.IsNullOrWhiteSpace(this.HeaderComment)) {
+        this.Comment(this.HeaderComment);
+        this.WriteLine();
+      }
+      foreach (var ns in this.NamespacesToImport) {
+        this.Import(ns);
+      }
     }
     public override void EndFile() {
     }

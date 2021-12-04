@@ -19,6 +19,8 @@ namespace CodeGeneration {
     public string outputNamespace = "";
     public String[] customImports = new String[] {};
 
+    public bool generateDataAnnotationsForLocalModels = true; //requires also the "EntityAnnoations" Nuget Package!
+
     //DEBUGGING
     public int waitForDebuggerSec = 0;
 

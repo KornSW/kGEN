@@ -10,10 +10,10 @@ namespace CodeGeneration.Languages {
 
   public class WriterForPHP : CodeWriterBase {
 
-    public WriterForPHP(TextWriter targetWriter, CodeWritingSettings cfg) : base(targetWriter, cfg) {
+    public WriterForPHP(TextWriter targetWriter, RootCfg cfg) : base(targetWriter, cfg) {
     }
 
-    public override void Import(string @namespace) {
+    protected override void Import(string @namespace) {
       if (@namespace.StartsWith("System")) {
         return;
       }
@@ -27,6 +27,10 @@ namespace CodeGeneration.Languages {
 
     public override void EndNamespace() {
       this.PopAndWriteLine("}");
+    }
+
+    protected override string GetSymbolEscapingPattern() {
+      return "{0}";
     }
 
     private string Escape(string input) {
@@ -63,26 +67,51 @@ namespace CodeGeneration.Languages {
       this.PopAndWriteLine("}");
     }
 
-    public override void BeginMethod(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false) {
+    protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null) {
       methodName = this.Escape(methodName);
 
-      if (!this.Cfg.GenerateTypeNamesInPhp || string.IsNullOrWhiteSpace(returnTypeName)) {
+      if (!this.Cfg.generateTypeNamesInPhp || string.IsNullOrWhiteSpace(returnTypeName)) {
         returnTypeName = "";
       }
       else {
         returnTypeName = ": " + returnTypeName;
       }
 
+      string prms = "";
+      if (parameters != null && parameters.Any()) {
+        prms = String.Join(", ", parameters.Select((p) => {
+          if (this.Cfg.generateTypeNamesInPhp) {
+            if (p.CommonType == CommonType.NotCommon) {
+              return p.CustomType + " $" + p.ParamName;
+            }
+            else {
+              return this.GetCommonTypeName(p.CommonType) + " $" + p.ParamName;
+            }
+          }
+          else {
+            return  "$" + p.ParamName;
+          }
+        }).ToArray());
+      }
+
       if (isInterfaceDeclartion) {
-        this.WriteLine($"function {methodName}(){returnTypeName};");
+        this.WriteLine($"function {methodName}({prms}){returnTypeName};");
       }
       else {
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}function {methodName}(){returnTypeName} {{");
+        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}function {methodName}({prms}){returnTypeName} {{");
       }
     }
 
     public override void EndMethod() {
       this.PopAndWriteLine("}");
+    }
+
+    public override void Return(string result = null) {
+      this.WriteLine($"return{this.Ppnd(" ", result)};");
+    }
+
+    public override void Assign(string target, string source, string trailingComment = null) {
+      this.WriteLine($"{target} = {source};{this.Ppnd(" // ", trailingComment)}");
     }
 
     public override void Comment(string text, bool dumpToSingleLine = false) {
@@ -97,18 +126,35 @@ namespace CodeGeneration.Languages {
       }
     }
 
-    public override void Summary(string text, bool dumpToSingleLine) {
+    //https://developer.wordpress.org/coding-standards/inline-documentation-standards/php/
+    public override void Summary(string text, bool dumpToSingleLine, MethodParamDescriptor[] parameters = null) {
       if (string.IsNullOrWhiteSpace(text)) {
         return;
       }
       if (!dumpToSingleLine) {
         this.WriteLine($"/*");
         this.WriteLine($"* " + text.Replace("\n", "\n* "));
+
+        if (parameters != null && parameters.Any()) {
+          this.WriteLine("*");
+          foreach (var paramSummary in parameters) {
+            this.WriteLine($"* @param ${paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+          }
+        }
+
         this.WriteLine($"*/");
       }
       else {
         this.WriteLine($"// " + text.Replace("\n", " ").Replace("  ", " "));
+        //this.WriteLine($"//");
+        if (parameters != null && parameters.Any()) {
+          foreach (var paramSummary in parameters) {
+            this.WriteLine($"// @param ${paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+          }
+        }
+
       }
+
     }
 
     public override void AttributesLine(params string[] attribs) {
@@ -144,20 +190,20 @@ namespace CodeGeneration.Languages {
 
     public override void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null) {
 
-      if (!this.Cfg.GenerateTypeNamesInPhp) {
+      if (!this.Cfg.generateTypeNamesInPhp) {
         propType = "";
       }
       else {
         propType = propType + " ";
       }
 
-      var line = $"{this.GetAccessModifierString(access)}{propType}${this.Escape(this.Ftl(propName))};";
+      var line = $"{this.GetAccessModifierString(access)}{propType}${this.Escape(this.Ftl(propName))}";
 
       if (!string.IsNullOrWhiteSpace(defaultValue)) {
-        line = line + " = " + defaultValue + ";";
+        line = line + " = " + defaultValue;
       }
 
-      this.WriteLine(line.Trim());
+      this.WriteLine(line.Trim() + ";");
     }
     public override string GetCommonTypeName(CommonType t) {
       // https://www.w3schools.com/php/php_datatypes.asp
@@ -227,6 +273,13 @@ namespace CodeGeneration.Languages {
 
     public override void BeginFile() {
       this.WriteLine("<?php");
+      if (!String.IsNullOrWhiteSpace(this.HeaderComment)) {
+        this.Comment(this.HeaderComment);
+        this.WriteLine();
+      }
+      foreach (var ns in this.NamespacesToImport) {
+        this.Import(ns);
+      }
     }
 
     public override void EndFile() {

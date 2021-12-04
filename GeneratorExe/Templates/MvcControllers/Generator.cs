@@ -37,11 +37,8 @@ namespace CodeGeneration.MvcControllers {
       Program.AddResolvePath(Path.GetDirectoryName(inputFileFullPath));
       Assembly ass = Assembly.LoadFile(inputFileFullPath);
 
-      if (!String.IsNullOrWhiteSpace(cfg.codeGenInfoHeader)) {
-        string header = cfg.codeGenInfoHeader;
-        header = header.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
-        writer.Comment(header);
-        writer.WriteLine();
+      if (!String.IsNullOrWhiteSpace(writer.HeaderComment)) {
+        writer.HeaderComment = writer.HeaderComment.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
       }
 
       Type[] svcInterfaces;
@@ -53,7 +50,10 @@ namespace CodeGeneration.MvcControllers {
       }
 
       //transform patterns to regex
-      cfg.interfaceTypeNamePattern = "^(" + Regex.Escape(cfg.interfaceTypeNamePattern).Replace("\\*", ".*?") + ")$";
+      if (!cfg.interfaceTypeNamePattern.StartsWith("^(")) {
+        //if it is not alrady a regex, transform it to an regex:
+        cfg.interfaceTypeNamePattern = "^(" + Regex.Escape(cfg.interfaceTypeNamePattern).Replace("\\*", ".*?") + ")$";
+      }
 
       svcInterfaces = svcInterfaces.Where((Type i) => Regex.IsMatch(i.FullName, cfg.interfaceTypeNamePattern)).ToArray();
 
@@ -61,7 +61,7 @@ namespace CodeGeneration.MvcControllers {
         nsImports.Remove(cfg.outputNamespace);
       }
       foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
-        writer.Import(import);
+        writer.RequireImport(import);
       }
 
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
@@ -135,9 +135,11 @@ namespace CodeGeneration.MvcControllers {
 
           string swaggerBodyAttrib = "";
           if (cfg.generateSwashbuckleAttributesForControllers) {
-            swaggerBodyAttrib = "[SwaggerRequestBody(Required = true)] ";
+
             string escDesc = svcMthDoc.Replace("\\", "\\\\").Replace("\"", "\\\"");
-            swaggerBodyAttrib = swaggerBodyAttrib + ($"[SwaggerOperation(OperationId = nameof({svcMth.Name}), Description = \"{escDesc}\")]");
+            writer.WriteLine($"[SwaggerOperation(OperationId = nameof({svcMth.Name}), Description = \"{escDesc}\")]");
+
+            swaggerBodyAttrib = "[SwaggerRequestBody(Required = true)]";
           }
 
           writer.WriteLineAndPush($"public {svcMth.Name}Response {svcMth.Name}([FromBody]{swaggerBodyAttrib} {svcMth.Name}Request args) {{");

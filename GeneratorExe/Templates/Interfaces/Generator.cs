@@ -23,11 +23,8 @@ namespace CodeGeneration.Interfaces {
       Program.AddResolvePath(Path.GetDirectoryName(inputFileFullPath));
       Assembly ass = Assembly.LoadFile(inputFileFullPath);
 
-      if (!String.IsNullOrWhiteSpace(cfg.codeGenInfoHeader)) {
-        string header = cfg.codeGenInfoHeader;
-        header = header.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
-        writer.Comment(header);
-        writer.WriteLine();
+      if (!String.IsNullOrWhiteSpace(writer.HeaderComment)) {
+        writer.HeaderComment = writer.HeaderComment.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
       }
 
       Type[] svcInterfaces;
@@ -39,7 +36,10 @@ namespace CodeGeneration.Interfaces {
       }
 
       //transform patterns to regex
-      cfg.interfaceTypeNamePattern = "^(" + Regex.Escape(cfg.interfaceTypeNamePattern).Replace("\\*", ".*?") + ")$";
+      if (!cfg.interfaceTypeNamePattern.StartsWith("^(")) {
+        //if it is not alrady a regex, transform it to an regex:
+        cfg.interfaceTypeNamePattern = "^(" + Regex.Escape(cfg.interfaceTypeNamePattern).Replace("\\*", ".*?") + ")$";
+      }
 
       svcInterfaces = svcInterfaces.Where((Type i) => Regex.IsMatch(i.FullName, cfg.interfaceTypeNamePattern)).ToArray();
 
@@ -47,7 +47,7 @@ namespace CodeGeneration.Interfaces {
         nsImports.Remove(cfg.outputNamespace);
       }
       foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
-        writer.Import(import);
+        writer.RequireImport(import);
       }
 
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
@@ -73,7 +73,6 @@ namespace CodeGeneration.Interfaces {
         writer.WriteLine();
 
         writer.BeginInterface(AccessModifier.Public, svcInt.Name);
-        writer.WriteLine();
 
         foreach (MethodInfo svcMth in svcInt.GetMethods()) {
           string svcMthDoc = XmlCommentAccessExtensions.GetDocumentation(svcMth, true);
@@ -82,74 +81,15 @@ namespace CodeGeneration.Interfaces {
           if (String.IsNullOrWhiteSpace(svcMthDoc)) {
             svcMthDoc = svcMth.Name;
           }
-          writer.WriteLine($"/// <summary> {svcMthDoc} </summary>");
-          writer.WriteLine($"/// <param name=\"args\"> request capsule containing the method arguments </param>");
 
-
-          //writer.WriteLine($"[HttpPost(\"{writer.Ftl(svcMth.Name)}\"), Produces(\"application/json\")]");
-
-
-
-
-
-
-          writer.WriteLineAndPush($"public {svcMth.Name}Response {svcMth.Name}({svcMth.Name}Request args) {{");
-
-          var @params = new List<string>();
+          var prms = new List<MethodParamDescriptor>();
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
-            if (svcMthPrm.IsOut) {
-              if (svcMthPrm.IsIn) {
-                writer.WriteLine($"response.{writer.Ftl(svcMthPrm.Name)} = args.{writer.Ftl(svcMthPrm.Name)}; //shift IN-OUT value");
-              }
-              @params.Add($"response.{writer.Ftl(svcMthPrm.Name)}");
-            }
-            else {
-
-              if (svcMthPrm.IsOptional) {
-
-                string defaultValueString = "";
-                if (svcMthPrm.DefaultValue == null) {
-                  defaultValueString = "null";
-                }
-                else if (svcMthPrm.DefaultValue.GetType() == typeof(string)) {
-                  defaultValueString = "\"" + svcMthPrm.DefaultValue.ToString() + "\"";
-                }
-                else {
-                  defaultValueString = svcMthPrm.DefaultValue.ToString();
-                }
-
-                if (svcMthPrm.ParameterType.IsValueType) {
-                  @params.Add($"(args.{writer.Ftl(svcMthPrm.Name)}.HasValue ? args.{writer.Ftl(svcMthPrm.Name)}.Value : {defaultValueString})");
-                }
-                else {
-                  //here 'null' will be used
-                  @params.Add($"args.{writer.Ftl(svcMthPrm.Name)}");
-
-                  //@params.Add($"(args.{writer.Ftl(svcMthPrm.Name)} == null ? args.{writer.Ftl(svcMthPrm.Name)} : {defaultValueString})");
-                }
-              }
-              else {
-                @params.Add($"args.{writer.Ftl(svcMthPrm.Name)}");
-              }
-            }
+            prms.Add(MethodParamDescriptor.FromParameterInfo(svcMthPrm));
+            writer.RequireImport(svcMthPrm.ParameterType.Namespace);
           }
 
-          if (svcMth.ReturnType != null && svcMth.ReturnType != typeof(void)) {
-            writer.WriteLine($"response.@return = _{endpointName}.{svcMth.Name}({Environment.NewLine + String.Join("," + Environment.NewLine, @params.ToArray()) + Environment.NewLine});");
-          }
-          else {
-            writer.WriteLine($"_{endpointName}.{svcMth.Name}({Environment.NewLine + String.Join("," + Environment.NewLine, @params.ToArray()) + Environment.NewLine});");
-          }
-
-          writer.WriteLine($"return response;");
-          writer.PopAndWriteLine("}");
-
-          writer.WriteLineAndPush("catch (Exception ex) {");
-          writer.WriteLine($"_Logger.LogCritical(ex, ex.Message);");
-
-          writer.PopAndWriteLine("}");
-
-          writer.EndMethod(); //method
+          writer.Summary(svcMthDoc, false, prms.ToArray());
+          writer.MethodInterface(svcMth.Name, svcMth.Name + "Response", prms.ToArray());
 
         }//foreach Method
 
@@ -166,4 +106,5 @@ namespace CodeGeneration.Interfaces {
     }
 
   }
+
 }

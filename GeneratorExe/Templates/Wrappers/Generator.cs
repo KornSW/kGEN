@@ -17,26 +17,16 @@ namespace CodeGeneration.Wrappers {
 
     public void Generate(CodeWriterBase writer, Cfg cfg) {
 
-      if(writer.GetType() != typeof(WriterForCS)) {
-        throw new Exception("For the selected template is currenty only language 'CS' supported!");
-      }
-
-      var nsImports = new List<string>();
-      nsImports.Add("System");
-      nsImports.Add("System.Collections.Generic");
-      nsImports.Add("System.ComponentModel.DataAnnotations");
-
-      var wrapperContent = new StringBuilder(10000);
+      writer.RequireImport("System");
+      writer.RequireImport("System.Collections.Generic");
+      writer.RequireImport("System.ComponentModel.DataAnnotations");
 
       var inputFileFullPath = Path.GetFullPath(cfg.inputFile);
       Program.AddResolvePath(Path.GetDirectoryName(inputFileFullPath));
       Assembly ass = Assembly.LoadFile(inputFileFullPath);
 
-      if (!String.IsNullOrWhiteSpace(cfg.codeGenInfoHeader)) {
-        string header = cfg.codeGenInfoHeader;
-        header = header.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
-        writer.Comment(header);
-        writer.WriteLine();
+      if (!String.IsNullOrWhiteSpace(writer.HeaderComment)) {
+        writer.HeaderComment = writer.HeaderComment.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
       }
 
       Type[] svcInterfaces;
@@ -48,13 +38,19 @@ namespace CodeGeneration.Wrappers {
       }
 
       //transform patterns to regex
-      cfg.interfaceTypeNamePattern = "^(" + Regex.Escape(cfg.interfaceTypeNamePattern).Replace("\\*", ".*?") + ")$";
+      if (!cfg.interfaceTypeNamePattern.StartsWith("^(")) {
+        //if it is not alrady a regex, transform it to an regex:
+        cfg.interfaceTypeNamePattern = "^(" + Regex.Escape(cfg.interfaceTypeNamePattern).Replace("\\*", ".*?") + ")$";
+      }
+
+      if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
+        writer.WriteLine();
+        writer.BeginNamespace(cfg.outputNamespace);
+      }
 
       svcInterfaces = svcInterfaces.Where((Type i) => Regex.IsMatch(i.FullName, cfg.interfaceTypeNamePattern)).ToArray();
 
       //collect models
-      //var directlyUsedModelTypes = new List<Type>();
-      //var wrappers = new Dictionary<String, StringBuilder>();
       foreach (Type svcInt in svcInterfaces) {
 
         if (cfg.useInterfaceTypeNameToGenerateSubNamespace) {
@@ -65,13 +61,10 @@ namespace CodeGeneration.Wrappers {
           if (cfg.removeTrailingCharCountForSubNamespace > 0 && name.Length >= cfg.removeTrailingCharCountForSubNamespace) {
             name = name.Substring(0, name.Length - cfg.removeTrailingCharCountForSubNamespace);
           }
-          wrapperContent.AppendLine();
-          wrapperContent.AppendLine("namespace " + name + " {");
+          writer.WriteLine();
+          writer.BeginNamespace(name);
         }
 
-        //if(!nsImports.Contains(svcInt.Namespace)){
-        //  nsImports.Add(svcInt.Namespace);
-        //}
         string svcIntDoc = XmlCommentAccessExtensions.GetDocumentation(svcInt);
 
         foreach (MethodInfo svcMth in svcInt.GetMethods()) {
@@ -79,173 +72,197 @@ namespace CodeGeneration.Wrappers {
 
           if (svcMth.ReturnType != null && svcMth.ReturnType != typeof(void)) {
             //directlyUsedModelTypes.Add(svcMth.ReturnType);
-            if (!nsImports.Contains(svcMth.ReturnType.Namespace)) {
-              nsImports.Add(svcMth.ReturnType.Namespace);
-            }
+            writer.RequireImport(svcMth.ReturnType.Namespace);
           }
 
-          string requestWrapperName = svcMth.Name + "Request";
-          string responseWrapperName = svcMth.Name + "Response";
-          StringBuilder requestWrapperContent = new StringBuilder(500);
-          StringBuilder responseWrapperContent = new StringBuilder(500);
+          string reqStr = "Required";
+          bool nullable;
+          String pType;
+          String initializer = "";
 
-          requestWrapperContent.AppendLine();
-          requestWrapperContent.AppendLine("/// <summary>");
-          requestWrapperContent.AppendLine($"/// Contains arguments for calling '{svcMth.Name}'.");
+
+
+
+
+
+          #region REQUEST
+
+          writer.WriteLine();
+
+          string requestSummaryText = $"Contains arguments for calling '{svcMth.Name}'.";
           if (!String.IsNullOrWhiteSpace(svcMthDoc)) {
-            requestWrapperContent.AppendLine($"/// Method: " + svcMthDoc.Replace("\n", "\n///   "));
+            requestSummaryText = requestSummaryText + "\nMethod: " + svcMthDoc;
           }
-          requestWrapperContent.AppendLine("/// </summary>");
-          requestWrapperContent.AppendLine("public class " + requestWrapperName + " {");
-
-          responseWrapperContent.AppendLine();
-          responseWrapperContent.AppendLine("/// <summary>");
-          responseWrapperContent.AppendLine($"/// Contains results from calling '{svcMth.Name}'.");
-          if (!String.IsNullOrWhiteSpace(svcMthDoc)) {
-            responseWrapperContent.AppendLine($"/// Method: " + svcMthDoc.Replace("\n", "\n///   "));
-          }
-          responseWrapperContent.AppendLine("/// </summary>");
-          responseWrapperContent.AppendLine("public class " + responseWrapperName + " {");
+          writer.Summary(requestSummaryText, false);
+          writer.BeginClass(AccessModifier.Public, svcMth.Name + "Request");
 
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
             string svcMthPrmDoc = XmlCommentAccessExtensions.GetDocumentation(svcMthPrm);
             if (String.IsNullOrWhiteSpace(svcMthPrmDoc)) {
               svcMthPrmDoc = XmlCommentAccessExtensions.GetDocumentation(svcMthPrm.ParameterType);
             }
-            //directlyUsedModelTypes.Add(svcMthPrm.ParameterType);
 
-            if (!nsImports.Contains(svcMthPrm.ParameterType.Namespace)) {
-              nsImports.Add(svcMthPrm.ParameterType.Namespace);
-            }
+            writer.RequireImport(svcMthPrm.ParameterType.Namespace);
 
-            string reqStr = "Required";
+            reqStr = "Required";
             if (svcMthPrm.IsOptional) {
               reqStr = "Optional";
             }
 
+            pType = null;
+            initializer = "";
 
-            //if (svcMthPrm.IsOptional) {
-            //  //paramSignature.Add($"{pt} {svcMthPrm.Name} = default({pt.Name})");
-            //  if (pt.IsValueType) {
-            //    paramSignature.Add($"{pfx}{pt.Name}? {svcMthPrm.Name} = null");
-            //  }
-            //  else {
-            //    paramSignature.Add($"{pfx}{pt.Name} {svcMthPrm.Name} = null");
-            //  }
-            //}
-            //else {
-            //  paramSignature.Add($"{pfx}{pt.Name} {svcMthPrm.Name}");
-            //}
-
-            //string accessModifier = "";//interfaces have no a.m.
-            //if (modelTypeToGenerate.IsClass) {
-            //  accessModifier = "public ";
-            //}
-            //string pType = prop.PropertyType.Name;
-            //if ()
-
-            String pType;
-            String initializer = "";
-
-            bool nullable;
+            nullable = false;
             if (svcMthPrm.IsOut) {
-              pType = svcMthPrm.ParameterType.GetElementType().GetTypeNameSave(out nullable);
+              //pType = svcMthPrm.ParameterType.GetElementType().GetTypeNameSave(out nullable);
+              nullable = svcMthPrm.ParameterType.GetElementType().IsNullableType();
+              pType = writer.EscapeTypeName(svcMthPrm.ParameterType.GetElementType());
             }
             else {
-              pType = svcMthPrm.ParameterType.GetTypeNameSave(out nullable);
+              //pType = svcMthPrm.ParameterType.GetTypeNameSave(out nullable);
+              nullable = svcMthPrm.ParameterType.IsNullableType();
+              pType = writer.EscapeTypeName(svcMthPrm.ParameterType);
             }
-            if (nullable || (svcMthPrm.IsOptional && svcMthPrm.ParameterType.IsValueType)) {
-              pType = pType + "?";
-              initializer = " = null;";
+   
+            if (nullable) {
+              initializer = writer.GetNull();
+            }
+            else if (svcMthPrm.IsOptional && svcMthPrm.ParameterType.IsValueType) {
+              pType = writer.GetNullableTypeName(pType);
+              initializer = writer.GetNull();
             }
 
             if (!svcMthPrm.IsOut) {
-              requestWrapperContent.AppendLine();
+              writer.WriteLine();
               if (!String.IsNullOrWhiteSpace(svcMthPrmDoc)) {
-                requestWrapperContent.AppendLine($"  /// <summary> {reqStr} Argument for '{svcMth.Name}' ({pType}): {svcMthPrmDoc} </summary>");
+                writer.Summary($"{reqStr} Argument for '{svcMth.Name}' ({pType}): {svcMthPrmDoc}",true);
               }
               else {
-                requestWrapperContent.AppendLine($"  /// <summary> {reqStr} Argument for '{svcMth.Name}' ({pType}) </summary>");
+                writer.Summary($"{reqStr} Argument for '{svcMth.Name}' ({pType})", true);
               }
-              if (!svcMthPrm.IsOptional) {
-                requestWrapperContent.AppendLine("  [Required]");
+              if (!svcMthPrm.IsOptional && cfg.generateDataAnnotationsForLocalModels) {
+                writer.AttributesLine("Required");
               }
-              requestWrapperContent.AppendLine("  public " + pType + " " + svcMthPrm.Name + " { get; set; }" + initializer);
+
+              writer.InlineProperty(AccessModifier.Public, svcMthPrm.Name, pType, initializer);
+              //writer.WriteLine("  public " + pType + " " + svcMthPrm.Name + " { get; set; }" + initializer);
             }
+
+          }//foreach Param
+
+          writer.WriteLine();
+          writer.EndClass();
+
+          #endregion 
+
+          #region RESPONSE
+
+          writer.WriteLine();
+
+          string responseSummaryText = $"Contains results from calling '{svcMth.Name}'.";
+          if (!String.IsNullOrWhiteSpace(svcMthDoc)) {
+            responseSummaryText = responseSummaryText + "\nMethod: " + svcMthDoc;
+          }
+          writer.Summary(responseSummaryText, false);
+          writer.BeginClass(AccessModifier.Public, svcMth.Name + "Response");
+
+          foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
+            string svcMthPrmDoc = XmlCommentAccessExtensions.GetDocumentation(svcMthPrm);
+            if (String.IsNullOrWhiteSpace(svcMthPrmDoc)) {
+              svcMthPrmDoc = XmlCommentAccessExtensions.GetDocumentation(svcMthPrm.ParameterType);
+            }
+
+            reqStr = "Required";
+            if (svcMthPrm.IsOptional) {
+              reqStr = "Optional";
+            }
+
+            pType = null;
+            initializer = "";
+
+            nullable = false;
             if (svcMthPrm.IsOut) {
-              responseWrapperContent.AppendLine();
+              //pType = svcMthPrm.ParameterType.GetElementType().GetTypeNameSave(out nullable);
+              nullable = svcMthPrm.ParameterType.GetElementType().IsNullableType();
+              pType = writer.EscapeTypeName(svcMthPrm.ParameterType.GetElementType());
+            }
+            else {
+              //pType = svcMthPrm.ParameterType.GetTypeNameSave(out nullable);
+              nullable = svcMthPrm.ParameterType.IsNullableType();
+              pType = writer.EscapeTypeName(svcMthPrm.ParameterType);
+            }
+
+            if (nullable) {
+              initializer = writer.GetNull();
+            }
+            else if (svcMthPrm.IsOptional && svcMthPrm.ParameterType.IsValueType) {
+              pType  = writer.GetNullableTypeName(pType);
+              initializer = writer.GetNull();
+            }
+
+            if (svcMthPrm.IsOut) {
+              writer.WriteLine();
               if (!String.IsNullOrWhiteSpace(svcMthPrmDoc)) {
-                responseWrapperContent.AppendLine($"  /// <summary> Out-Argument of '{svcMth.Name}' ({pType}): {svcMthPrmDoc} </summary>");
+                writer.Summary($"Out-Argument of '{svcMth.Name}' ({pType}): {svcMthPrmDoc}",true);
               }
               else {
-                responseWrapperContent.AppendLine($"  /// <summary> Out-Argument of '{svcMth.Name}' ({pType}) </summary>");
+                writer.Summary($"Out-Argument of '{svcMth.Name}' ({pType})", true);
               }
               if (!svcMthPrm.IsOptional) {
-                responseWrapperContent.AppendLine("  [Required]");
+                writer.AttributesLine("Required");
               }
-              responseWrapperContent.AppendLine("  public " + pType + " " + svcMthPrm.Name + " { get; set; }" + initializer);
+
+              writer.InlineProperty(AccessModifier.Public, svcMthPrm.Name, pType, initializer);
+              //writer.WriteLine("  public " + pType + " " + svcMthPrm.Name + " { get; set; }" + initializer);
             }
 
           }//foreach Param
 
           if (cfg.generateFaultProperty) {
-            responseWrapperContent.AppendLine();
-            responseWrapperContent.AppendLine($"  /// <summary> This field contains error text equivalent to an Exception message! (note that only 'fault' XOR 'return' can have a value != null)  </summary>");
-            responseWrapperContent.AppendLine("  public string fault { get; set; } = null;");
+            writer.WriteLine();
+            writer.Summary($"This field contains error text equivalent to an Exception message! (note that only 'fault' XOR 'return' can have a value != null)", true);
+            writer.InlineProperty(
+              AccessModifier.Public,
+              "fault",
+              writer.GetCommonTypeName(CommonType.String),
+              writer.GetNull()
+            );
+            //writer.WriteLine("  public string fault { get; set; } = null;");
           }
-
-          requestWrapperContent.AppendLine();
-          requestWrapperContent.AppendLine("}");
 
           if (svcMth.ReturnType != null && svcMth.ReturnType != typeof(void)) {
-            responseWrapperContent.AppendLine();
+            writer.WriteLine();
             string retTypeDoc = XmlCommentAccessExtensions.GetDocumentation(svcMth.ReturnType);
             if (!String.IsNullOrWhiteSpace(retTypeDoc)) {
-              responseWrapperContent.AppendLine($"  /// <summary> Return-Value of '{svcMth.Name}' ({svcMth.ReturnType.Name}): {retTypeDoc} </summary>");
+              writer.Summary($"Return-Value of '{svcMth.Name}' ({svcMth.ReturnType.Name}): {retTypeDoc}", true);
             }
             else {
-              responseWrapperContent.AppendLine($"  /// <summary> Return-Value of '{svcMth.Name}' ({svcMth.ReturnType.Name}) </summary>");
+              writer.Summary($"Return-Value of '{svcMth.Name}' ({svcMth.ReturnType.Name})", true);
             }
             if (!cfg.generateFaultProperty) {
-              responseWrapperContent.AppendLine("  [Required]");
+              writer.AttributesLine("Required");
             }
-            responseWrapperContent.AppendLine("  public " + svcMth.ReturnType.Name + " @return { get; set; }");
+            writer.InlineProperty(
+              AccessModifier.Public,
+              writer.EscapeSymbolName("return"),
+              writer.EscapeTypeName(svcMth.ReturnType)
+            );
+            //writer.WriteLine("  public " + svcMth.ReturnType.Name + " @return { get; set; }");
           }
-          responseWrapperContent.AppendLine();
-          responseWrapperContent.AppendLine("}");
 
-          wrapperContent.Append(requestWrapperContent);
-          wrapperContent.Append(responseWrapperContent);
+          writer.WriteLine();
+          writer.EndClass();
+
+          #endregion
 
         }//foreach Method
 
         if (cfg.useInterfaceTypeNameToGenerateSubNamespace) {
-          wrapperContent.AppendLine();
-          wrapperContent.AppendLine("}");
+          writer.WriteLine();
+          writer.EndNamespace();
         }
 
       }//foreach Interface
-
-      //this can be done only here, because the nsImports will be extended during main-logic
-      if (!String.IsNullOrWhiteSpace(cfg.outputNamespace) && cfg.customImports.Contains(cfg.outputNamespace)) {
-        nsImports.Remove(cfg.outputNamespace);
-      }
-      foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
-        writer.Import(import);
-      }
-
-      if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
-        writer.WriteLine();
-        writer.BeginNamespace(cfg.outputNamespace);
-      }
-
-      using (var sr = new StringReader(wrapperContent.ToString())) {
-        string line = sr.ReadLine();
-        while (line != null) {
-          writer.WriteLine(line);
-          line = sr.ReadLine();
-        }
-      }
 
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {
         writer.WriteLine();

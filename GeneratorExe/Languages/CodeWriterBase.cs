@@ -15,7 +15,29 @@ namespace CodeGeneration.Languages {
     private CodeWritingSettings _Cfg;
     private int _CurrentIndentLevel = 0;
 
-    public static CodeWriterBase GetForLanguage(string lang,TextWriter target, CodeWritingSettings settings) {
+    private List<String> _NamespacesToImport = new List<String>();
+
+    protected String[] NamespacesToImport {
+      get {
+        return _NamespacesToImport.OrderBy((n)=> n).Distinct().ToArray();
+      }
+    }
+
+    public String HeaderComment { get; set; } = "";
+
+    //HACK: der state muss in context ausgelagert und mehreren writern bereitgestellt werden
+    internal void CopyStateTo(CodeWriterBase target) {
+      target._NamespacesToImport = _NamespacesToImport;
+      target.HeaderComment = this.HeaderComment;
+    }
+
+    public void RequireImport(string namepsace) {
+      if (!_NamespacesToImport.Contains(namepsace)) {
+        _NamespacesToImport.Add(namepsace);
+      }
+    }
+
+    public static CodeWriterBase GetForLanguage(string lang,TextWriter target, RootCfg settings) {
       if (lang == "C#" || lang == "CS") {
         return new WriterForCS(target, settings);
       }
@@ -39,9 +61,15 @@ namespace CodeGeneration.Languages {
       }
     }
 
-    protected CodeWriterBase(TextWriter targetWriter, CodeWritingSettings cfg) {
+    protected CodeWriterBase(TextWriter targetWriter, RootCfg cfg) {
       _Wtr = targetWriter;
       _Cfg = cfg;
+      this.HeaderComment = cfg.codeGenInfoHeader;
+
+      foreach (var ns in cfg.customImports) {
+        _NamespacesToImport.Add(ns);
+      }
+
     }
 
     #region convenience
@@ -142,7 +170,7 @@ namespace CodeGeneration.Languages {
 
     public abstract void BeginFile();
     public abstract void EndFile();
-    public abstract void Import(string @namespace);
+    protected abstract void Import(string @namespace);
     public abstract void BeginNamespace(string name);
     public abstract void EndNamespace();
 
@@ -153,15 +181,48 @@ namespace CodeGeneration.Languages {
     public abstract void EndClass();
     public abstract void EndInterface();
 
+    public void MethodInterface(string methodName, string returnTypeName = null,MethodParamDescriptor[] parameters = null) {
+      this.MethodCore(AccessModifier.None, methodName, returnTypeName, true, parameters);
+    }
 
-    public abstract void BeginMethod(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false);
+    protected void BeginMethod(AccessModifier access, string methodName, string returnTypeName = null, MethodParamDescriptor[] parameters = null) {
+      this.MethodCore(access, methodName, returnTypeName, false, parameters);
+    }
+
+    protected abstract void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null);
+
     public abstract void EndMethod();
+    public abstract void Return(string result = null);
+
+    public abstract void Assign(string target,string source, string trailingComment = null);
 
     public abstract void Comment(string text, bool dumpToSingleLine = false);
-    public abstract void Summary(string text, bool dumpToSingleLine);
+    public abstract void Summary(string text, bool dumpToSingleLine, MethodParamDescriptor[] parameters = null);
     public abstract void AttributesLine(params string[] attribs);
 
     public abstract void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null);
+
+    protected string Ppnd(string stringToPrepend, string stringToWrite) {
+      if(string.IsNullOrWhiteSpace(stringToWrite)) {
+        return "";
+      }
+      return stringToPrepend + stringToWrite;
+    }
+
+    protected virtual string[] GetLangSpecificKeywordsToEscape() {
+      return new String[] { };
+    }
+
+    protected abstract string GetSymbolEscapingPattern();
+    private String[] _KeyWords = new String[] {
+      "return", "if", "var" , "next", "for", "loop", "class", "namespace", "interface"
+    };
+    public string EscapeSymbolName(string name) { 
+      if(this.GetLangSpecificKeywordsToEscape().Union(_KeyWords).Contains(name)) {
+        return this.GetSymbolEscapingPattern().Replace("{0}", name);
+      }
+      return name;
+    }
 
     public string EscapeTypeName(Type t) {
 
@@ -185,7 +246,7 @@ namespace CodeGeneration.Languages {
         else {
 
           CommonType ct = CommonType.String;
-          if (this.TryResolveToCommonType(t,ref ct)) {
+          if (TryResolveToCommonType(t,ref ct)) {
             return this.GetCommonTypeName(ct);
           }
           else {
@@ -204,11 +265,16 @@ namespace CodeGeneration.Languages {
 
     public abstract string GetAccessModifierString(AccessModifier access);
     public abstract string GetCommonTypeName(CommonType t);
+
+    public virtual string GetNull() {
+      return "null";
+    }
+
     public abstract string GetGenericTypeName(string sourceTypeName,params string[] genericArguments);
     public abstract string GetArrayTypeName(string sourceTypeName);
     public abstract string GetNullableTypeName(string sourceTypeName);
 
-    public bool TryResolveToCommonType(Type t, ref CommonType commonType) {
+    public static bool TryResolveToCommonType(Type t, ref CommonType commonType) {
       if (t == typeof(string)) {
         commonType = CommonType.String;
       }
@@ -251,31 +317,6 @@ namespace CodeGeneration.Languages {
       return true;
     }
 
-  }
-
-  [Flags]
-  public enum AccessModifier {
-    None = 0,
-    Private = 1,
-    Public = 2,
-    Internal =4,
-    Protected = 8,
-    Absttract = 16
-  }
-
-
-  public enum CommonType {
-    Object = 0,
-    String = 1,
-    Boolean = 2,
-    Byte = 3,
-    Int16 = 4,
-    Int32 = 5,
-    Int64 = 6,
-    Decimal =7,
-    Double = 8,
-    DateTime =9,
-    Guid = 10,
   }
 
 }

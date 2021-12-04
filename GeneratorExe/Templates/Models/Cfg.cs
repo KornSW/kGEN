@@ -12,7 +12,7 @@ namespace CodeGeneration.Models {
       "Foo.*"
     };
 
-    public bool generateDataAnnotationsForLocalModels = true; //requires also the "EntityAnnoations" Nuget Package!
+  
     public bool generateNavigationAnnotationsForLocalModels = true;
 
   }

@@ -13,7 +13,7 @@ namespace CodeGeneration.Languages {
 
     #region " PHP Specific " 
     
-    public bool GenerateTypeNamesInPhp { get; set; } = true;
+    public bool generateTypeNamesInPhp { get; set; } = true;
 
     #endregion
 

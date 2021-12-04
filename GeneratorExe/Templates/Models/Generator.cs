@@ -35,11 +35,9 @@ namespace CodeGeneration.Models {
       Program.AddResolvePath(Path.GetDirectoryName(inputFileFullPath));
       Assembly ass = Assembly.LoadFile(inputFileFullPath);
 
-      if (!String.IsNullOrWhiteSpace(cfg.codeGenInfoHeader)) {
-        string header = cfg.codeGenInfoHeader;
-        header = header.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
-        writer.Comment(header);
-        writer.WriteLine();
+
+      if (!String.IsNullOrWhiteSpace(writer.HeaderComment)) {
+        writer.HeaderComment = writer.HeaderComment.Replace("{InputAssemblyVersion}", ass.GetName().Version.ToString());
       }
 
       Type[] svcInterfaces;
@@ -51,7 +49,11 @@ namespace CodeGeneration.Models {
       }
 
       //transform patterns to regex
-      cfg.interfaceTypeNamePattern = "^(" + Regex.Escape(cfg.interfaceTypeNamePattern).Replace("\\*", ".*?") + ")$";
+      if (!cfg.interfaceTypeNamePattern.StartsWith("^(")) {
+        //if it is not alrady a regex, transform it to an regex:
+        cfg.interfaceTypeNamePattern = "^(" + Regex.Escape(cfg.interfaceTypeNamePattern).Replace("\\*", ".*?") + ")$";
+      }
+
       for (int i = 0; i < cfg.modelTypeNameIncludePatterns.Length; i++) {
         cfg.modelTypeNameIncludePatterns[i] = "^(" + Regex.Escape(cfg.modelTypeNameIncludePatterns[i]).Replace("\\*", ".*?") + ")$";
       }
@@ -230,7 +232,7 @@ namespace CodeGeneration.Models {
         nsImports.Remove(cfg.outputNamespace);
       }
       foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
-        writer.Import(import);
+        writer.RequireImport(import);
       }
 
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace)) {

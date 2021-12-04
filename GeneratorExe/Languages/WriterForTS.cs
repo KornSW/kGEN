@@ -10,9 +10,9 @@ namespace CodeGeneration.Languages {
 
   public class WriterForTS : CodeWriterBase {
 
-    public WriterForTS(TextWriter targetWriter, CodeWritingSettings cfg) : base(targetWriter, cfg) {
+    public WriterForTS(TextWriter targetWriter, RootCfg cfg) : base(targetWriter, cfg) {
     }
-    public override void Import(string @namespace) {
+    protected override void Import(string @namespace) {
       if (@namespace.StartsWith("System")) {
         return;
       }
@@ -26,6 +26,10 @@ namespace CodeGeneration.Languages {
 
     public override void EndNamespace() {
       this.PopAndWriteLine("}");
+    }
+
+    protected override string GetSymbolEscapingPattern() {
+      return "@{0}";
     }
 
     private string Escape(string input) {
@@ -62,21 +66,39 @@ namespace CodeGeneration.Languages {
       this.PopAndWriteLine("}");
     }
 
-    public override void BeginMethod(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false) {
+    protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null) {
       methodName = this.Escape(methodName);
       if (string.IsNullOrWhiteSpace(returnTypeName)) {
         returnTypeName = "void";
       }
+      string prms = "";
+      if (parameters != null && parameters.Any()) {
+        prms = String.Join(", ", parameters.Select((p) => {
+          if (p.CommonType == CommonType.NotCommon) {
+            return p.ParamName + " : " + p.CustomType;
+          }
+          else {
+            return p.ParamName + " : " + this.GetCommonTypeName(p.CommonType);
+          }
+        }).ToArray());
+      }
       if (isInterfaceDeclartion) {
-        this.WriteLine($"{this.GetAccessModifierString(access)}{methodName}() : {returnTypeName};");
+        this.WriteLine($"{this.GetAccessModifierString(access)}{methodName}({prms}) : {returnTypeName};");
       }
       else {
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}{methodName}() : {returnTypeName} {{");
+        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}{methodName}({prms}) : {returnTypeName} {{");
       }
     }
 
     public override void EndMethod() {
       this.PopAndWriteLine("}");
+    }
+    public override void Return(string result = null) {
+      this.WriteLine($"return{this.Ppnd(" ", result)};");
+    }
+
+    public override void Assign(string target, string source, string trailingComment = null) {
+      this.WriteLine($"{target} = {source};{this.Ppnd(" // ",trailingComment)}");
     }
 
     public override void Comment(string text, bool dumpToSingleLine = false) {
@@ -91,18 +113,34 @@ namespace CodeGeneration.Languages {
       }
     }
 
-    public override void Summary(string text, bool dumpToSingleLine) {
+    //https://typedoc.org/guides/doccomments/
+    public override void Summary(string text, bool dumpToSingleLine, MethodParamDescriptor[] parameters = null) {
       if (string.IsNullOrWhiteSpace(text)) {
         return;
       }
       if (!dumpToSingleLine) {
-        this.WriteLine($"/*");
-        this.WriteLine($"* " + text.Replace("\n", "\n* "));
-        this.WriteLine($"*/");
+        this.WriteLine($"/**");
+        this.WriteLine($" * " + text.Replace("\n", "\n * "));
+        if (parameters != null && parameters.Any()) {
+          this.WriteLine(" *");
+          foreach (var paramSummary in parameters) {
+            this.WriteLine($" * @param {paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+          }
+        }
+        this.WriteLine($" */");
       }
       else {
         this.WriteLine($"// " + text.Replace("\n", " ").Replace("  ", " "));
+        if (parameters != null && parameters.Any()) {
+          //this.WriteLine($"//");
+          foreach (var paramSummary in parameters) {
+            this.WriteLine($"// @param {paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+          }
+        }
       }
+
+
+
     }
 
     public override void AttributesLine(params string[] attribs) {
@@ -200,6 +238,13 @@ namespace CodeGeneration.Languages {
     }
 
     public override void BeginFile() {
+      if (!String.IsNullOrWhiteSpace(this.HeaderComment)) {
+        this.Comment(this.HeaderComment);
+        this.WriteLine();
+      }
+      foreach (var ns in this.NamespacesToImport) {
+        this.Import(ns);
+      }
     }
     public override void EndFile() {
     }

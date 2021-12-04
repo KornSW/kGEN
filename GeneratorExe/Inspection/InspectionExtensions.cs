@@ -15,9 +15,13 @@ namespace CodeGeneration.Inspection {
       return extendee;
     }
 
+    public static bool IsNullableType(this Type extendee) {
+      return (extendee.IsGenericType && extendee.GetGenericTypeDefinition() == typeof(Nullable<>));
+    }
+
     public static string GetTypeNameSave(this Type extendee, out bool isNullable) {
 
-      isNullable = (extendee.IsGenericType && extendee.GetGenericTypeDefinition() == typeof(Nullable<>));
+      isNullable = extendee.IsNullableType();
 
       if (isNullable) {
         bool dummy;
