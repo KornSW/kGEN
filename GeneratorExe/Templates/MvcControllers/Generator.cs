@@ -92,8 +92,14 @@ namespace CodeGeneration.MvcControllers {
         string svcIntDoc = XmlCommentAccessExtensions.GetDocumentation(svcInt);
         string endpointName = svcInt.Name;
 
-        if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
-          endpointName = endpointName.Substring(1);
+        //if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
+        //  endpointName = endpointName.Substring(1);
+        //}
+        if (cfg.removeLeadingCharCountForControllerName > 0 && endpointName.Length >= cfg.removeLeadingCharCountForControllerName) {
+          endpointName = endpointName.Substring(cfg.removeLeadingCharCountForControllerName);
+        }
+        if (cfg.removeTrailingCharCountForControllerName > 0 && endpointName.Length >= cfg.removeTrailingCharCountForControllerName) {
+          endpointName = endpointName.Substring(0, endpointName.Length - cfg.removeTrailingCharCountForControllerName);
         }
 
         writer.WriteLine();
@@ -146,13 +152,23 @@ namespace CodeGeneration.MvcControllers {
           writer.WriteLineAndPush("try {");
           writer.WriteLine($"var response = new {svcMth.Name}Response();");
 
+          foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
+            if (svcMthPrm.IsOut) {
+              if (svcMthPrm.IsIn) {
+                writer.WriteLine($"var {writer.Ftl(svcMthPrm.Name)}Buffer = args.{writer.Ftl(svcMthPrm.Name)};");
+              }
+            }
+          }
+
           var @params = new List<string>();
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
             if (svcMthPrm.IsOut) {
               if (svcMthPrm.IsIn) {
-                writer.WriteLine($"response.{writer.Ftl(svcMthPrm.Name)} = args.{writer.Ftl(svcMthPrm.Name)}; //shift IN-OUT value");
+                @params.Add($"ref {writer.Ftl(svcMthPrm.Name)}Buffer");
               }
-              @params.Add($"response.{writer.Ftl(svcMthPrm.Name)}");
+              else {
+                @params.Add($"out var {writer.Ftl(svcMthPrm.Name)}Buffer");
+              }
             }
             else {
 
@@ -164,6 +180,9 @@ namespace CodeGeneration.MvcControllers {
                 }
                 else if (svcMthPrm.DefaultValue.GetType() == typeof(string)) {
                   defaultValueString = "\"" + svcMthPrm.DefaultValue.ToString() + "\"";
+                }
+                else if (svcMthPrm.DefaultValue.GetType() == typeof(bool)) {
+                  defaultValueString = "false";
                 }
                 else {
                   defaultValueString = svcMthPrm.DefaultValue.ToString();
@@ -184,12 +203,20 @@ namespace CodeGeneration.MvcControllers {
               }
             }
           }
-
+    
           if (svcMth.ReturnType != null && svcMth.ReturnType != typeof(void)) {
-            writer.WriteLine($"response.@return = _{endpointName}.{svcMth.Name}({Environment.NewLine + String.Join("," + Environment.NewLine, @params.ToArray()) + Environment.NewLine});");
+            writer.WriteLineAndPush($"response.@return = _{endpointName}.{svcMth.Name}(");
           }
           else {
-            writer.WriteLine($"_{endpointName}.{svcMth.Name}({Environment.NewLine + String.Join("," + Environment.NewLine, @params.ToArray()) + Environment.NewLine});");
+            writer.WriteLineAndPush($"_{endpointName}.{svcMth.Name}(");
+          }
+          writer.WriteLine($"{String.Join("," + Environment.NewLine, @params.ToArray())}");
+          writer.PopAndWriteLine(");");
+
+          foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
+            if (svcMthPrm.IsOut) {
+              writer.WriteLine($"response.{writer.Ftl(svcMthPrm.Name)} = {writer.Ftl(svcMthPrm.Name)}Buffer;");
+            }
           }
 
           writer.WriteLine($"return response;");

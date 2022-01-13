@@ -246,13 +246,18 @@ namespace CodeGeneration.Languages {
         else {
 
           CommonType ct = CommonType.String;
-          if (TryResolveToCommonType(t,ref ct)) {
+          if (TryResolveToCommonType(t, ref ct)) {
             return this.GetCommonTypeName(ct);
           }
-          else {
-            return t.Name;
+          else if (t.IsConstructedGenericType) {
+            Type gb = t.GetGenericTypeDefinition();
+            string escapedGbTypeName = this.EscapeTypeName(gb);
+            escapedGbTypeName = escapedGbTypeName.Substring(0, escapedGbTypeName.IndexOf('`'));
+            string[] escapedGaTypeNames = t.GetGenericArguments().Select(ga => this.EscapeTypeName(ga)).ToArray();
+            return this.GetGenericTypeName(escapedGbTypeName, escapedGaTypeNames);
           }
 
+          return t.Name;
         }
 
       }

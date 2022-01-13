@@ -105,7 +105,18 @@ namespace System.Reflection {
     private static string GetRawXmlDocumentationForMethod(MethodInfo methodInfo) {
       LoadXmlDocumentation(methodInfo.DeclaringType.Assembly, methodInfo.DeclaringType.Namespace);
 
-      var paramTypeNames = methodInfo.GetParameters().Select((p) => p.ParameterType.FullName).ToArray();
+      var paramTypeNames = methodInfo.GetParameters().Select((p) => {
+        string result = p.ParameterType.FullName;
+        if (p.ParameterType.IsConstructedGenericType) {
+          result = p.ParameterType.GetGenericTypeDefinition().FullName;
+          result = result.Substring(0, result.IndexOf ('`'));
+          result = result + "{" + string.Join(",", p.ParameterType.GetGenericArguments().Select(ga => ga.FullName)) + "}";
+        }
+        if (p.IsOut) {
+          result = result.Replace("&", "") + "@";
+        }
+        return result;
+      }).ToArray();
       string paramSignature = "";
       if (paramTypeNames.Length > 0) { //no () when no param!!!!
         paramSignature = "(" + String.Join(",", paramTypeNames) + ")";

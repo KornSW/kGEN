@@ -135,10 +135,10 @@ namespace CodeGeneration.Wrappers {
             if (!svcMthPrm.IsOut) {
               writer.WriteLine();
               if (!String.IsNullOrWhiteSpace(svcMthPrmDoc)) {
-                writer.Summary($"{reqStr} Argument for '{svcMth.Name}' ({pType}): {svcMthPrmDoc}",true);
+                writer.Summary($"{reqStr} Argument for '{svcMth.Name}' ({pType.Replace("<", "(").Replace(">", ")")}): {svcMthPrmDoc}",true);
               }
               else {
-                writer.Summary($"{reqStr} Argument for '{svcMth.Name}' ({pType})", true);
+                writer.Summary($"{reqStr} Argument for '{svcMth.Name}' ({pType.Replace("<", "(").Replace(">", ")")})", true);
               }
               if (!svcMthPrm.IsOptional && cfg.generateDataAnnotationsForLocalModels) {
                 writer.AttributesLine("Required");
