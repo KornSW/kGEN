@@ -30,14 +30,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="kGEN.Sample.Generated.php">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>kGEN.Sample.tt</DependentUpon>
-    </None>
     <None Update="kGEN.Sample.tt">
       <Generator>TextTemplatingFileGenerator</Generator>
-      <LastGenOutput>kGEN.Sample.Generated.php</LastGenOutput>
+      <LastGenOutput>kGEN.Sample.Generated.ts</LastGenOutput>
     </None>
   </ItemGroup>
 

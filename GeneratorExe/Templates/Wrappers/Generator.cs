@@ -80,11 +80,6 @@ namespace CodeGeneration.Wrappers {
           String pType;
           String initializer = "";
 
-
-
-
-
-
           #region REQUEST
 
           writer.WriteLine();
@@ -140,11 +135,18 @@ namespace CodeGeneration.Wrappers {
               else {
                 writer.Summary($"{reqStr} Argument for '{svcMth.Name}' ({pType.Replace("<", "(").Replace(">", ")")})", true);
               }
-              if (!svcMthPrm.IsOptional && cfg.generateDataAnnotationsForLocalModels) {
+
+              var paramName = svcMthPrm.Name;
+              if (cfg.outputLanguage == "TS") {
+                if (svcMthPrm.IsOptional) {
+                  paramName = paramName + "?";
+                }
+              }
+              else if (!svcMthPrm.IsOptional && cfg.generateDataAnnotationsForLocalModels) {
                 writer.AttributesLine("Required");
               }
-
-              writer.InlineProperty(AccessModifier.Public, svcMthPrm.Name, pType, initializer);
+     
+              writer.InlineProperty(AccessModifier.Public, paramName, pType, initializer);
               //writer.WriteLine("  public " + pType + " " + svcMthPrm.Name + " { get; set; }" + initializer);
             }
 
@@ -208,11 +210,18 @@ namespace CodeGeneration.Wrappers {
               else {
                 writer.Summary($"Out-Argument of '{svcMth.Name}' ({pType})", true);
               }
-              if (!svcMthPrm.IsOptional) {
+
+              var paramName = svcMthPrm.Name;
+              if (cfg.outputLanguage == "TS") {
+                if (svcMthPrm.IsOptional) {
+                  paramName = paramName + "?";
+                }
+              }
+              else if (!svcMthPrm.IsOptional) {
                 writer.AttributesLine("Required");
               }
 
-              writer.InlineProperty(AccessModifier.Public, svcMthPrm.Name, pType, initializer);
+              writer.InlineProperty(AccessModifier.Public, paramName, pType, initializer);
               //writer.WriteLine("  public " + pType + " " + svcMthPrm.Name + " { get; set; }" + initializer);
             }
 
@@ -239,12 +248,15 @@ namespace CodeGeneration.Wrappers {
             else {
               writer.Summary($"Return-Value of '{svcMth.Name}' ({svcMth.ReturnType.Name})", true);
             }
+            var paramName = writer.EscapeSymbolName("return");
             if (!cfg.generateFaultProperty) {
-              writer.AttributesLine("Required");
+              if (cfg.outputLanguage != "TS") {
+                writer.AttributesLine("Required");
+              }
             }
             writer.InlineProperty(
               AccessModifier.Public,
-              writer.EscapeSymbolName("return"),
+              paramName,
               writer.EscapeTypeName(svcMth.ReturnType)
             );
             //writer.WriteLine("  public " + svcMth.ReturnType.Name + " @return { get; set; }");

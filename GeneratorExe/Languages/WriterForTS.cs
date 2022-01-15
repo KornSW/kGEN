@@ -29,7 +29,7 @@ namespace CodeGeneration.Languages {
     }
 
     protected override string GetSymbolEscapingPattern() {
-      return "@{0}";
+      return "{0}"; //unglaublicher weise ist der parse so schlau, dass wir das noch nie brauchten...
     }
 
     private string Escape(string input) {
@@ -39,22 +39,22 @@ namespace CodeGeneration.Languages {
     public override void BeginClass(AccessModifier access, string typeName, string inherits = null, bool partial = false) {
       typeName = this.Escape(typeName);
       if (string.IsNullOrWhiteSpace(inherits)) {
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}class {typeName} {{");
+        this.WriteLineAndPush($"export class {typeName} {{");
       }
       else {
         inherits = this.Escape(inherits);
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}class {typeName} : {inherits} {{");
+        this.WriteLineAndPush($"export class {typeName} : {inherits} {{");
       }
     }
 
     public override void BeginInterface(AccessModifier access, string typeName, string inherits = null, bool partial = false) {
       typeName = this.Escape(typeName);
       if (string.IsNullOrWhiteSpace(inherits)) {
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}interface {typeName} {{");
+        this.WriteLineAndPush($"export interface {typeName} {{");
       }
       else {
         inherits = this.Escape(inherits);
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}interface {typeName} : {inherits} {{");
+        this.WriteLineAndPush($"export interface {typeName} : {inherits} {{");
       }
     }
 
@@ -175,20 +175,18 @@ namespace CodeGeneration.Languages {
     }
 
     public override void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null) {
-
-      var line = $"{this.GetAccessModifierString(access)}{this.Ftl(this.Escape(propName))} : {propType} {{ get; set; }}";
-
       if (!string.IsNullOrWhiteSpace(defaultValue)) {
-        line = line + " = " + defaultValue + ";";
+        this.WriteLine($"public {this.Ftl(propName)} : {propType} = {defaultValue};");
       }
-
-      this.WriteLine(line.Trim());
+      else {
+        this.WriteLine($"public {this.Ftl(propName)} : {propType};");
+      }
     }
 
     public override string GetCommonTypeName(CommonType t) {
 
       if (t == CommonType.Boolean)
-        return "bool";
+        return "boolean";
       if (t == CommonType.Byte)
         return "byte";
       if (t == CommonType.DateTime)
@@ -234,7 +232,8 @@ namespace CodeGeneration.Languages {
     }
 
     public override string GetNullableTypeName(string sourceTypeName) {
-      return sourceTypeName + "?";
+      //return sourceTypeName + "?"; falsch - muss dan das symbol: public page? : number = null;     public page? : number = undefined;
+      return sourceTypeName;
     }
 
     public override void BeginFile() {

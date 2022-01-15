@@ -179,9 +179,9 @@ namespace CodeGeneration.Clients {
             if (String.IsNullOrWhiteSpace(svcMthPrmDoc)) {
               svcMthPrmDoc = XmlCommentAccessExtensions.GetDocumentation(svcMthPrm.ParameterType);
             }
-            if (!String.IsNullOrWhiteSpace(svcMthPrmDoc)) {
+            //if (!String.IsNullOrWhiteSpace(svcMthPrmDoc)) {<<  immer, sonst gibts compilerwarnings!
               writer.WriteLine($"/// <param name=\"{svcMthPrm.Name}\"> {svcMthPrmDoc} </param>");
-            }
+            //}
 
             Type pt = svcMthPrm.ParameterType;
             string pfx = "";
@@ -195,11 +195,13 @@ namespace CodeGeneration.Clients {
               }
             }
 
-            bool nullable;
-            var ptName = pt.GetTypeNameSave(out nullable);
-            if (nullable) {
-              ptName = ptName + "?";
-            }
+            //bool nullable;
+            //var ptName = pt.GetTypeNameSave(out nullable);
+            //if (nullable) {
+            //  ptName = ptName + "?";
+            //}
+
+            var ptName = writer.EscapeTypeName(pt);
 
             if (svcMthPrm.IsOptional) {
               //were implementing the interface "as it is"
@@ -211,6 +213,9 @@ namespace CodeGeneration.Clients {
               }
               else if(svcMthPrm.DefaultValue.GetType() == typeof(string)) {
                 defaultValueString = " = \"" + svcMthPrm.DefaultValue.ToString() + "\"";
+              }
+              else if (svcMthPrm.DefaultValue.GetType() == typeof(bool)) {
+                defaultValueString = "false";
               }
               else {
                 defaultValueString = " = " + svcMthPrm.DefaultValue.ToString() + "";
