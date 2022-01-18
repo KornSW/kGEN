@@ -46,6 +46,9 @@ namespace CodeGeneration.Interfaces {
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace) && cfg.customImports.Contains(cfg.outputNamespace)) {
         nsImports.Remove(cfg.outputNamespace);
       }
+      if (cfg.writeCustomImportsOnly) {
+        nsImports.Clear();
+      }
       foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
         writer.RequireImport(import);
       }
@@ -82,14 +85,22 @@ namespace CodeGeneration.Interfaces {
             svcMthDoc = svcMth.Name;
           }
 
+          Func<Type,string> nsPrefixGetter = (t)=> cfg.nsPrefixForModelTypesUsage;
+
           var prms = new List<MethodParamDescriptor>();
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
-            prms.Add(MethodParamDescriptor.FromParameterInfo(svcMthPrm));
-            writer.RequireImport(svcMthPrm.ParameterType.Namespace);
+            var desc = MethodParamDescriptor.FromParameterInfo(svcMthPrm, (t)=> writer.EscapeTypeName (t, nsPrefixGetter));
+
+            prms.Add(desc);
+            if (!cfg.writeCustomImportsOnly) {
+              writer.RequireImport(svcMthPrm.ParameterType.Namespace);
+            }
           }
+  
+          var returnTypeName = writer.EscapeTypeName(svcMth.ReturnType, nsPrefixGetter);
 
           writer.Summary(svcMthDoc, false, prms.ToArray());
-          writer.MethodInterface(svcMth.Name, svcMth.Name + "Response", prms.ToArray());
+          writer.MethodInterface(svcMth.Name, returnTypeName, prms.ToArray());
 
         }//foreach Method
 

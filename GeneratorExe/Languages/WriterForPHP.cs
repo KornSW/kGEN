@@ -10,14 +10,29 @@ namespace CodeGeneration.Languages {
 
   public class WriterForPHP : CodeWriterBase {
 
+    public override bool IsDotNet {
+      get {
+        return false;
+      }
+    }
+
     public WriterForPHP(TextWriter targetWriter, RootCfg cfg) : base(targetWriter, cfg) {
     }
 
     protected override void Import(string @namespace) {
+
+      //HACK exclude .NET wellknown-namespaces
       if (@namespace.StartsWith("System")) {
         return;
       }
-      this.WriteLine($"use \\{@namespace.Replace(".", "\\")};");
+
+      if(@namespace.EndsWith(".php") || @namespace.EndsWith(".php'")) {
+        //in php we also allow files to be imported
+        this.WriteLine($"include '{@namespace.Replace("'","")}';");
+      }
+      else {
+        this.WriteLine($"use \\{@namespace.Replace(".", "\\")};");
+      }
     }
 
     public override void BeginNamespace(string name) {
@@ -80,16 +95,29 @@ namespace CodeGeneration.Languages {
       string prms = "";
       if (parameters != null && parameters.Any()) {
         prms = String.Join(", ", parameters.Select((p) => {
+          string typeName;
+          if (p.CommonType == CommonType.NotCommon) {
+            typeName = p.CustomType;
+          }
+          else {
+            typeName = this.GetCommonTypeName(p.CommonType);
+          }
+
+          string byRefPrefix = "";
+          if (p.IsOut) {
+            byRefPrefix = "&";
+          }
+
           if (this.Cfg.generateTypeNamesInPhp) {
             if (p.CommonType == CommonType.NotCommon) {
-              return p.CustomType + " $" + p.ParamName;
+              return p.CustomType + " " + byRefPrefix + "$" + p.ParamName;
             }
             else {
-              return this.GetCommonTypeName(p.CommonType) + " $" + p.ParamName;
+              return this.GetCommonTypeName(p.CommonType) + " " + byRefPrefix + "$" + p.ParamName;
             }
           }
           else {
-            return  "$" + p.ParamName;
+            return byRefPrefix + "$" + p.ParamName;
           }
         }).ToArray());
       }
@@ -138,7 +166,12 @@ namespace CodeGeneration.Languages {
         if (parameters != null && parameters.Any()) {
           this.WriteLine("*");
           foreach (var paramSummary in parameters) {
-            this.WriteLine($"* @param ${paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+            if (!string.IsNullOrWhiteSpace(paramSummary.Description)) {
+              this.WriteLine($"* @param ${paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+            }
+            else {
+              this.WriteLine($"* @param ${paramSummary.ParamName}");
+            }
           }
         }
 
@@ -149,7 +182,12 @@ namespace CodeGeneration.Languages {
         //this.WriteLine($"//");
         if (parameters != null && parameters.Any()) {
           foreach (var paramSummary in parameters) {
-            this.WriteLine($"// @param ${paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+            if (!string.IsNullOrWhiteSpace(paramSummary.Description)) {
+              this.WriteLine($"// @param ${paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+            }
+            else {
+              this.WriteLine($"// @param ${paramSummary.ParamName}");
+            }
           }
         }
 
@@ -238,7 +276,11 @@ namespace CodeGeneration.Languages {
         return "int";
       if (t == CommonType.String)
         return "string";
-      if (t == CommonType.Object)
+      if (t == CommonType.Any)
+        return "object";
+      if (t == CommonType.DynamicStructure)
+        return "object";
+      if (t == CommonType.StringDict)
         return "object";
       return "<UNKNOWN_TYPE>";
     }

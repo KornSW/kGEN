@@ -37,7 +37,9 @@ namespace CodeGeneration.Languages {
       }
     }
 
-    public static CodeWriterBase GetForLanguage(string lang,TextWriter target, RootCfg settings) {
+  public abstract bool IsDotNet { get; }
+
+  public static CodeWriterBase GetForLanguage(string lang,TextWriter target, RootCfg settings) {
       if (lang == "C#" || lang == "CS") {
         return new WriterForCS(target, settings);
       }
@@ -224,7 +226,7 @@ namespace CodeGeneration.Languages {
       return name;
     }
 
-    public string EscapeTypeName(Type t) {
+    public string EscapeTypeName(Type t, Func<Type,string> nsPrefixGetterForNonCommonTypes = null) {
 
       if(t == null) {
         return "";
@@ -232,7 +234,7 @@ namespace CodeGeneration.Languages {
 
       if (t.IsArray) {
         Type et = t.GetElementType();
-        string etName = this.EscapeTypeName(et);
+        string etName = this.EscapeTypeName(et, nsPrefixGetterForNonCommonTypes);
         return this.GetArrayTypeName(etName);
       }
       else {
@@ -240,7 +242,7 @@ namespace CodeGeneration.Languages {
         bool isNullable = (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>));
         if (isNullable) {
           Type nt = t.GetGenericArguments()[0];
-          string ntName = this.EscapeTypeName(nt);
+          string ntName = this.EscapeTypeName(nt, nsPrefixGetterForNonCommonTypes);
           return this.GetNullableTypeName(ntName);
         }
         else {
@@ -251,13 +253,19 @@ namespace CodeGeneration.Languages {
           }
           else if (t.IsConstructedGenericType) {
             Type gb = t.GetGenericTypeDefinition();
-            string escapedGbTypeName = this.EscapeTypeName(gb);
+            string escapedGbTypeName = this.EscapeTypeName(gb, nsPrefixGetterForNonCommonTypes);
             escapedGbTypeName = escapedGbTypeName.Substring(0, escapedGbTypeName.IndexOf('`'));
-            string[] escapedGaTypeNames = t.GetGenericArguments().Select(ga => this.EscapeTypeName(ga)).ToArray();
+            string[] escapedGaTypeNames = t.GetGenericArguments().Select(ga => this.EscapeTypeName(ga, nsPrefixGetterForNonCommonTypes)).ToArray();
             return this.GetGenericTypeName(escapedGbTypeName, escapedGaTypeNames);
           }
 
-          return t.Name;
+          if(nsPrefixGetterForNonCommonTypes != null) {
+            return nsPrefixGetterForNonCommonTypes.Invoke(t) + t.Name;
+          }
+          else {
+            return t.Name;
+          }
+
         }
 
       }
@@ -292,6 +300,12 @@ namespace CodeGeneration.Languages {
       else if (t == typeof(byte)) {
         commonType = CommonType.Byte;
       }
+      else if (t == typeof(int)) {
+        commonType = CommonType.Int32;
+      }
+      else if (t == typeof(long)) {
+        commonType = CommonType.Int64;
+      }
       else if (t == typeof(Int32)) {
         commonType = CommonType.Int32;
       }
@@ -314,12 +328,48 @@ namespace CodeGeneration.Languages {
         commonType = CommonType.Guid;
       }
       else if (t == typeof(object)) {
-        commonType = CommonType.Object;
+        commonType = CommonType.Any;
+      }
+      else if (t == typeof(Dictionary<String,Object>)) {
+        commonType = CommonType.DynamicStructure;
+      }
+      else if (t == typeof(Dictionary<String,String>)) {
+        commonType = CommonType.StringDict;
       }
       else {
         return false;
       }
       return true;
+    }
+
+    public string XmlDocToMd(string text) {
+      var sb = new StringBuilder(text.Length + 1);
+      var tokens = text.Replace("</see>", "°").Replace("<see", "°").Split('°');
+      //< see href = "https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html" > 'CIBA-Flow' </ see >
+      bool outSide = true;
+      foreach (var token in tokens) {
+        if (outSide) {
+          sb.Append(token);
+        }
+        else if (token.Contains(">")) {
+
+          int posOfContent = token.IndexOf(">") + 1;
+          var title = token.Substring(posOfContent).Trim();
+          var xmlDocNode = token.Substring(0, posOfContent - 1).Trim();
+
+          //only works for hyperlinks
+          if (xmlDocNode.Contains("href")) {
+            var url = xmlDocNode.Substring(xmlDocNode.IndexOf("\"") + 1);
+            url = url.Substring(0, url.IndexOf("\""));
+            sb.Append($"[{title}]({url})");
+          }
+          else {
+            sb.Append(title);
+          }
+        }
+        outSide = !outSide;//toggle
+      }
+      return sb.ToString();
     }
 
   }

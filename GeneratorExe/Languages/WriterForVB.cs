@@ -10,8 +10,15 @@ namespace CodeGeneration.Languages {
 
   public class WriterForVB : CodeWriterBase {
 
+    public override bool IsDotNet {
+      get {
+        return true;
+      }
+    }
+
     public WriterForVB(TextWriter targetWriter, RootCfg cfg): base (targetWriter, cfg) {
     }
+
     protected override void Import(string @namespace) {
       this.WriteLine($"Imports {@namespace}");
     }
@@ -75,11 +82,26 @@ namespace CodeGeneration.Languages {
       string prms = "";
       if (parameters != null && parameters.Any()) {
         prms = String.Join(", ", parameters.Select((p) => {
+          string typeName;
           if (p.CommonType == CommonType.NotCommon) {
-            return p.ParamName + " As " + p.CustomType;
+            typeName = p.CustomType;
           }
           else {
-            return p.ParamName + " As " + this.GetCommonTypeName(p.CommonType);
+            typeName = this.GetCommonTypeName(p.CommonType);
+          }
+          if (p.IsOut) {
+            if (p.IsIn) {
+              //REF
+              return "ByRef " + p.ParamName + " As " + typeName;
+            }
+            else {
+              //OUT
+              return "<Out> ByRef " + p.ParamName + " As " + typeName;
+            }
+          }
+          else {
+            //IN
+            return p.ParamName + " As " + typeName;
           }
         }).ToArray());
       }
@@ -130,7 +152,12 @@ namespace CodeGeneration.Languages {
 
       if(parameters != null && parameters.Any()) {
         foreach (var paramSummary in parameters) {
-          this.WriteLine($"''' <param name=\"{paramSummary.ParamName}\"> " + paramSummary.Description.Replace("\n", " ").Replace("  ", " ") + " </param>");
+          if (!string.IsNullOrWhiteSpace(paramSummary.Description)) {
+            this.WriteLine($"''' <param name=\"{paramSummary.ParamName}\"> " + paramSummary.Description.Replace("\n", " ").Replace("  ", " ") + " </param>");
+          }
+          else {
+            this.WriteLine($"''' <param name=\"{paramSummary.ParamName}\"> </param>");
+          }       
         }
       }
 
@@ -204,8 +231,12 @@ namespace CodeGeneration.Languages {
         return "Int64";
       if (t == CommonType.String)
         return "String";
-      if (t == CommonType.Object)
+      if (t == CommonType.Any)
         return "Object";
+      if (t == CommonType.DynamicStructure)
+        return "Dictionary(Of String, Object)";
+      if (t == CommonType.StringDict)
+        return "Dictionary(Of String, String)";
       return "<UNKNOWN_TYPE>";
     }
 

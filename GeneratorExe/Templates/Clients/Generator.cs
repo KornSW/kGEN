@@ -70,6 +70,9 @@ namespace CodeGeneration.Clients {
         }
       }
 
+      if (cfg.writeCustomImportsOnly) {
+        nsImports.Clear();
+      }
       foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
         writer.RequireImport(import);
       }
@@ -215,7 +218,7 @@ namespace CodeGeneration.Clients {
                 defaultValueString = " = \"" + svcMthPrm.DefaultValue.ToString() + "\"";
               }
               else if (svcMthPrm.DefaultValue.GetType() == typeof(bool)) {
-                defaultValueString = "false";
+                defaultValueString = " = false";
               }
               else {
                 defaultValueString = " = " + svcMthPrm.DefaultValue.ToString() + "";

@@ -10,6 +10,12 @@ namespace CodeGeneration.Languages {
 
   public class WriterForCS : CodeWriterBase {
 
+    public override bool IsDotNet {
+      get {
+        return true;
+      }
+    }
+
     public WriterForCS(TextWriter targetWriter, RootCfg cfg) : base(targetWriter, cfg) {
     }
     protected override void Import(string @namespace) {
@@ -73,11 +79,26 @@ namespace CodeGeneration.Languages {
       string prms = "";
       if (parameters != null && parameters.Any()) {
         prms = String.Join(", ", parameters.Select((p) => {
-          if(p.CommonType == CommonType.NotCommon) {
-            return p.CustomType + " " + p.ParamName;
+          string typeName;
+          if (p.CommonType == CommonType.NotCommon) {
+            typeName = p.CustomType;
           }
           else {
-            return this.GetCommonTypeName(p.CommonType) + " " + p.ParamName;
+            typeName = this.GetCommonTypeName(p.CommonType);
+          }
+          if (p.IsOut) {
+            if (p.IsIn) {
+              //REF
+              return "ref " + typeName + " " + p.ParamName;
+            }
+            else {
+              //OUT
+              return "out " + typeName + " " + p.ParamName;
+            }
+          }
+          else {
+            //IN
+            return typeName + " " + p.ParamName;
           }
         }).ToArray());
       }
@@ -128,7 +149,12 @@ namespace CodeGeneration.Languages {
 
       if (parameters != null && parameters.Any()) {
         foreach (var paramSummary in parameters) {
-          this.WriteLine($"/// <param name=\"{paramSummary.ParamName}\"> " + paramSummary.Description.Replace("\n", " ").Replace("  ", " ") + " </param>");
+          if (!string.IsNullOrWhiteSpace(paramSummary.Description)) {
+            this.WriteLine($"/// <param name=\"{paramSummary.ParamName}\"> " + paramSummary.Description.Replace("\n", " ").Replace("  ", " ") + " </param>");
+          }
+          else {
+            this.WriteLine($"/// <param name=\"{paramSummary.ParamName}\"> </param>");
+          }
         }
       }
 
@@ -165,17 +191,32 @@ namespace CodeGeneration.Languages {
 
     public override string GetCommonTypeName(CommonType t) {
 
-      if (t == CommonType.Boolean)  return "bool";
-      if (t == CommonType.Byte)     return "byte";
-      if (t == CommonType.DateTime) return "DateTime";
-      if (t == CommonType.Decimal)  return "decimal";
-      if (t == CommonType.Double)   return "double";
-      if (t == CommonType.Guid)     return "Guid";
-      if (t == CommonType.Int16)    return "Int16";
-      if (t == CommonType.Int32)    return "Int32";
-      if (t == CommonType.Int64)    return "Int64";
-      if (t == CommonType.String)   return "string";
-      if (t == CommonType.Object)   return "Object";
+      if (t == CommonType.Boolean)
+        return "bool";
+      if (t == CommonType.Byte)
+        return "byte";
+      if (t == CommonType.DateTime)
+        return "DateTime";
+      if (t == CommonType.Decimal)
+        return "decimal";
+      if (t == CommonType.Double)
+        return "double";
+      if (t == CommonType.Guid)
+        return "Guid";
+      if (t == CommonType.Int16)
+        return "Int16";
+      if (t == CommonType.Int32)
+        return "Int32";
+      if (t == CommonType.Int64)
+        return "Int64";
+      if (t == CommonType.String)
+        return "string";
+      if (t == CommonType.Any)
+        return "Object";
+      if (t == CommonType.DynamicStructure)
+        return "Dictionary<String,Object>";
+      if (t == CommonType.StringDict)
+        return "Dictionary<String,String>";
       return "<UNKNOWN_TYPE>";
     }
 

@@ -17,9 +17,11 @@ namespace CodeGeneration.Wrappers {
 
     public void Generate(CodeWriterBase writer, Cfg cfg) {
 
-      writer.RequireImport("System");
-      writer.RequireImport("System.Collections.Generic");
-      writer.RequireImport("System.ComponentModel.DataAnnotations");
+      if (!cfg.writeCustomImportsOnly && writer.IsDotNet) {
+        writer.RequireImport("System");
+        writer.RequireImport("System.Collections.Generic");
+        writer.RequireImport("System.ComponentModel.DataAnnotations");
+      }
 
       var inputFileFullPath = Path.GetFullPath(cfg.inputFile);
       Program.AddResolvePath(Path.GetDirectoryName(inputFileFullPath));
@@ -72,7 +74,10 @@ namespace CodeGeneration.Wrappers {
 
           if (svcMth.ReturnType != null && svcMth.ReturnType != typeof(void)) {
             //directlyUsedModelTypes.Add(svcMth.ReturnType);
-            writer.RequireImport(svcMth.ReturnType.Namespace);
+
+            if (!cfg.writeCustomImportsOnly) {
+              writer.RequireImport(svcMth.ReturnType.Namespace);
+            }
           }
 
           string reqStr = "Required";
@@ -97,7 +102,9 @@ namespace CodeGeneration.Wrappers {
               svcMthPrmDoc = XmlCommentAccessExtensions.GetDocumentation(svcMthPrm.ParameterType);
             }
 
-            writer.RequireImport(svcMthPrm.ParameterType.Namespace);
+            if (!cfg.writeCustomImportsOnly) {
+              writer.RequireImport(svcMthPrm.ParameterType.Namespace);
+            }
 
             reqStr = "Required";
             if (svcMthPrm.IsOptional) {
@@ -111,12 +118,12 @@ namespace CodeGeneration.Wrappers {
             if (svcMthPrm.IsOut) {
               //pType = svcMthPrm.ParameterType.GetElementType().GetTypeNameSave(out nullable);
               nullable = svcMthPrm.ParameterType.GetElementType().IsNullableType();
-              pType = writer.EscapeTypeName(svcMthPrm.ParameterType.GetElementType());
+              pType = writer.EscapeTypeName(svcMthPrm.ParameterType.GetElementType(),(t)=>cfg.nsPrefixForModelTypesUsage);
             }
             else {
               //pType = svcMthPrm.ParameterType.GetTypeNameSave(out nullable);
               nullable = svcMthPrm.ParameterType.IsNullableType();
-              pType = writer.EscapeTypeName(svcMthPrm.ParameterType);
+              pType = writer.EscapeTypeName(svcMthPrm.ParameterType, (t) => cfg.nsPrefixForModelTypesUsage);
             }
    
             if (nullable) {
@@ -186,12 +193,12 @@ namespace CodeGeneration.Wrappers {
             if (svcMthPrm.IsOut) {
               //pType = svcMthPrm.ParameterType.GetElementType().GetTypeNameSave(out nullable);
               nullable = svcMthPrm.ParameterType.GetElementType().IsNullableType();
-              pType = writer.EscapeTypeName(svcMthPrm.ParameterType.GetElementType());
+              pType = writer.EscapeTypeName(svcMthPrm.ParameterType.GetElementType(), (t) => cfg.nsPrefixForModelTypesUsage);
             }
             else {
               //pType = svcMthPrm.ParameterType.GetTypeNameSave(out nullable);
               nullable = svcMthPrm.ParameterType.IsNullableType();
-              pType = writer.EscapeTypeName(svcMthPrm.ParameterType);
+              pType = writer.EscapeTypeName(svcMthPrm.ParameterType, (t) => cfg.nsPrefixForModelTypesUsage);
             }
 
             if (nullable) {
@@ -257,7 +264,7 @@ namespace CodeGeneration.Wrappers {
             writer.InlineProperty(
               AccessModifier.Public,
               paramName,
-              writer.EscapeTypeName(svcMth.ReturnType)
+              writer.EscapeTypeName(svcMth.ReturnType, (t) => cfg.nsPrefixForModelTypesUsage)
             );
             //writer.WriteLine("  public " + svcMth.ReturnType.Name + " @return { get; set; }");
           }

@@ -60,6 +60,9 @@ namespace CodeGeneration.MvcControllers {
       if (!String.IsNullOrWhiteSpace(cfg.outputNamespace) && cfg.customImports.Contains(cfg.outputNamespace)) {
         nsImports.Remove(cfg.outputNamespace);
       }
+      if (cfg.writeCustomImportsOnly) {
+        nsImports.Clear();
+      }
       foreach (string import in cfg.customImports.Union(nsImports).Distinct().OrderBy((s) => s)) {
         writer.RequireImport(import);
       }

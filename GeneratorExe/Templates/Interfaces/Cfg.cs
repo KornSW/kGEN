@@ -8,6 +8,9 @@ namespace CodeGeneration.Interfaces {
 
   public class Cfg: RootCfg {
 
+    /// <summary> especially for typescript, because there is no way to have a wildcard-import </summary>
+    public string nsPrefixForModelTypesUsage = "";
+
   }
 
 }

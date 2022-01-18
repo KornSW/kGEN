@@ -10,12 +10,21 @@ namespace CodeGeneration.Languages {
 
   public class WriterForTS : CodeWriterBase {
 
+    public override bool IsDotNet {
+      get {
+        return false;
+      }
+    }
+
     public WriterForTS(TextWriter targetWriter, RootCfg cfg) : base(targetWriter, cfg) {
     }
     protected override void Import(string @namespace) {
+
+      //HACK exclude .NET wellknown-namespaces
       if (@namespace.StartsWith("System")) {
         return;
       }
+
       this.WriteLine($"import {@namespace};");
     }
 
@@ -74,11 +83,26 @@ namespace CodeGeneration.Languages {
       string prms = "";
       if (parameters != null && parameters.Any()) {
         prms = String.Join(", ", parameters.Select((p) => {
+          string typeName;
           if (p.CommonType == CommonType.NotCommon) {
-            return p.ParamName + " : " + p.CustomType;
+            typeName = p.CustomType;
           }
           else {
-            return p.ParamName + " : " + this.GetCommonTypeName(p.CommonType);
+            typeName = this.GetCommonTypeName(p.CommonType);
+          }
+          if (p.IsOut) {
+            if (p.IsIn) {
+              //REF
+              return p.ParamName + " :  { ref : " + typeName + " }";
+            }
+            else {
+              //OUT
+             return p.ParamName + " : (out: " + typeName  + ") => void" ;
+            }
+          }
+          else {
+            //IN
+            return p.ParamName + " : " + typeName;
           }
         }).ToArray());
       }
@@ -118,13 +142,21 @@ namespace CodeGeneration.Languages {
       if (string.IsNullOrWhiteSpace(text)) {
         return;
       }
+
+      text = this.XmlDocToMd(text);
+
       if (!dumpToSingleLine) {
         this.WriteLine($"/**");
         this.WriteLine($" * " + text.Replace("\n", "\n * "));
         if (parameters != null && parameters.Any()) {
           this.WriteLine(" *");
           foreach (var paramSummary in parameters) {
-            this.WriteLine($" * @param {paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+            if (!string.IsNullOrWhiteSpace(paramSummary.Description)) {
+              this.WriteLine($" * @param {paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+            }
+            else {
+              this.WriteLine($" * @param {paramSummary.ParamName}");
+            }
           }
         }
         this.WriteLine($" */");
@@ -134,12 +166,15 @@ namespace CodeGeneration.Languages {
         if (parameters != null && parameters.Any()) {
           //this.WriteLine($"//");
           foreach (var paramSummary in parameters) {
-            this.WriteLine($"// @param {paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+            if (!string.IsNullOrWhiteSpace(paramSummary.Description)) {
+              this.WriteLine($"// @param {paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+            }
+            else {
+              this.WriteLine($"// @param {paramSummary.ParamName}");
+            }
           }
         }
       }
-
-
 
     }
 
@@ -188,9 +223,9 @@ namespace CodeGeneration.Languages {
       if (t == CommonType.Boolean)
         return "boolean";
       if (t == CommonType.Byte)
-        return "byte";
+        return "number";
       if (t == CommonType.DateTime)
-        return "date";
+        return "Date";
       if (t == CommonType.Decimal)
         return "number";
       if (t == CommonType.Double)
@@ -205,7 +240,11 @@ namespace CodeGeneration.Languages {
         return "number";
       if (t == CommonType.String)
         return "string";
-      if (t == CommonType.Object)
+      if (t == CommonType.Any)
+        return "any";
+      if (t == CommonType.DynamicStructure)
+        return "object";
+      if (t == CommonType.StringDict)
         return "object";
       return "<UNKNOWN_TYPE>";
     }
@@ -224,7 +263,16 @@ namespace CodeGeneration.Languages {
     }
 
     public override string GetGenericTypeName(string sourceTypeName, params string[] genericArguments) {
-      return sourceTypeName + "<" + String.Join(", ", genericArguments) + ">";
+      //HACK: in typescript there is no List or Dictionary
+      if (sourceTypeName == "List" && genericArguments.Length == 1) {
+        return this.GetArrayTypeName(genericArguments[0]);
+      }
+      else if (sourceTypeName == "Dictionary" && genericArguments.Length == 2 && genericArguments[0]==this.GetCommonTypeName(CommonType.String)) {
+        return "object";
+      }
+      else {
+        return sourceTypeName + "<" + String.Join(", ", genericArguments) + ">";
+      }
     }
 
     public override string GetArrayTypeName(string sourceTypeName) {
@@ -232,7 +280,7 @@ namespace CodeGeneration.Languages {
     }
 
     public override string GetNullableTypeName(string sourceTypeName) {
-      //return sourceTypeName + "?"; falsch - muss dan das symbol: public page? : number = null;     public page? : number = undefined;
+      //return sourceTypeName + "?"; falsch - muss dann das symbol: public page? : number = null;     public page? : number = undefined;
       return sourceTypeName;
     }
 

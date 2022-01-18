@@ -20,7 +20,7 @@ namespace CodeGeneration {
 
   public enum CommonType {
     NotCommon = -1,
-    Object = 0,
+    Any = 0,
     String = 1,
     Boolean = 2,
     Byte = 3,
@@ -31,22 +31,33 @@ namespace CodeGeneration {
     Double = 8,
     DateTime = 9,
     Guid = 10,
+    /// <summary> Dictionary of String,Object </summary>
+    DynamicStructure = 11,
+    /// <summary> Dictionary of String,String </summary>
+    StringDict = 12
   }
 
   public class MethodParamDescriptor {
 
-    public static MethodParamDescriptor FromParameterInfo(ParameterInfo parameterInfo) {
+    public static MethodParamDescriptor FromParameterInfo(ParameterInfo parameterInfo, Func<Type, string> customTypeNameEscapingMethod) {
 
+      Type pType = parameterInfo.ParameterType;
+      if (parameterInfo.IsOut) {
+        pType = pType.GetElementType();
+      }
+      
       CommonType t = CommonType.NotCommon;
       string ct = null;
-      if (!CodeWriterBase.TryResolveToCommonType(parameterInfo.ParameterType, ref t)) {
-        ct = parameterInfo.ParameterType.Name;
+      if (!CodeWriterBase.TryResolveToCommonType(pType, ref t)) {
+        ct = customTypeNameEscapingMethod.Invoke(pType);
       }
 
       return new MethodParamDescriptor {
         ParamName = parameterInfo.Name,
         IsOptional = parameterInfo.IsOptional,
         Description = parameterInfo.GetDocumentation(false),
+        IsIn = parameterInfo.IsIn,
+        IsOut = parameterInfo.IsOut,
         CommonType = t,
         CustomType = ct
       };
@@ -58,6 +69,8 @@ namespace CodeGeneration {
 
     public String ParamName { get; set; } = null;
     public bool IsOptional { get; set; } = false;
+    public bool IsIn { get; set; } = false;
+    public bool IsOut { get; set; } = false;
     public String Description { get; set; } = null;
     public CommonType CommonType { get; set; } = CommonType.NotCommon;
     public String CustomType { get; set; } = null;
