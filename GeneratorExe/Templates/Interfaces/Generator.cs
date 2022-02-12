@@ -58,6 +58,8 @@ namespace CodeGeneration.Interfaces {
         writer.BeginNamespace(cfg.outputNamespace);
       }
 
+      //svcInterfaces = svcInterfaces.SortByUsage().ToArray();
+
       //collect models
       //var directlyUsedModelTypes = new List<Type>();
       //var wrappers = new Dictionary<String, StringBuilder>();
@@ -89,18 +91,23 @@ namespace CodeGeneration.Interfaces {
 
           var prms = new List<MethodParamDescriptor>();
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
-            var desc = MethodParamDescriptor.FromParameterInfo(svcMthPrm, (t)=> writer.EscapeTypeName (t, nsPrefixGetter));
+            var desc = MethodParamDescriptor.FromParameterInfo(svcMthPrm, (t)=> writer.EscapeTypeName (t, nsPrefixGetter), writer);
 
             prms.Add(desc);
             if (!cfg.writeCustomImportsOnly) {
               writer.RequireImport(svcMthPrm.ParameterType.Namespace);
             }
           }
-  
-          var returnTypeName = writer.EscapeTypeName(svcMth.ReturnType, nsPrefixGetter);
 
           writer.Summary(svcMthDoc, false, prms.ToArray());
-          writer.MethodInterface(svcMth.Name, returnTypeName, prms.ToArray());
+
+          if(svcMth.ReturnType.FullName == "System.Void") {
+            writer.MethodInterface(svcMth.Name, null, prms.ToArray());
+          }
+          else {
+            var returnTypeName = writer.EscapeTypeName(svcMth.ReturnType, nsPrefixGetter);
+            writer.MethodInterface(svcMth.Name, returnTypeName, prms.ToArray());
+          }
 
         }//foreach Method
 

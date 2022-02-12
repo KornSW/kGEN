@@ -251,7 +251,7 @@ namespace CodeGeneration.Clients {
 
           writer.WriteLine($"string url = _Url + \"{writer.Ftl(svcMth.Name)}\";");
 
-          writer.WriteLineAndPush($"var args = new {svcMth.Name}Request {{");
+          writer.WriteLineAndPush($"var requestWrapper = new {svcMth.Name}Request {{");
           int i = 0;
           int pCount = svcMth.GetParameters().Length;
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
@@ -267,19 +267,19 @@ namespace CodeGeneration.Clients {
           }
           writer.PopAndWriteLine("};");
 
-          writer.WriteLine($"string rawRequest = JsonConvert.SerializeObject(args);");
+          writer.WriteLine($"string rawRequest = JsonConvert.SerializeObject(requestWrapper);");
           writer.WriteLine($"string rawResponse = webClient.UploadString(url, rawRequest);");
-          writer.WriteLine($"var result = JsonConvert.DeserializeObject<{svcMth.Name}Response>(rawResponse);");
+          writer.WriteLine($"var responseWrapper = JsonConvert.DeserializeObject<{svcMth.Name}Response>(rawResponse);");
 
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
             if (svcMthPrm.IsOut) {
-              writer.WriteLine($"{svcMthPrm.Name} = result.{svcMthPrm.Name};");
+              writer.WriteLine($"{svcMthPrm.Name} = responseWrapper.{svcMthPrm.Name};");
             }
           }
 
           if (cfg.throwClientExecptionsFromFaultProperty) {
-            writer.WriteLineAndPush($"if(result.fault != null){{");
-            writer.WriteLine($"throw new Exception(result.fault);");
+            writer.WriteLineAndPush($"if(responseWrapper.fault != null){{");
+            writer.WriteLine($"throw new Exception(responseWrapper.fault);");
             writer.PopAndWriteLine("}");
           }
 
@@ -287,7 +287,7 @@ namespace CodeGeneration.Clients {
             writer.WriteLine($"return;");
           }
           else {
-            writer.WriteLine($"return result.@return;");
+            writer.WriteLine($"return responseWrapper.@return;");
           }
 
           writer.PopAndWriteLine("}");//using

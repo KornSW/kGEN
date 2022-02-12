@@ -279,6 +279,134 @@ namespace CodeGeneration.Languages {
     public abstract string GetAccessModifierString(AccessModifier access);
     public abstract string GetCommonTypeName(CommonType t);
 
+    public virtual string DateTimeConstructor(DateTime target) {
+      //HACK: aktual only C#
+      if (target == DateTime.MinValue) {
+        return "DateTime.MinValue";
+      }
+      else {
+        return "DateTime.Parse(\"" + target.ToString() + "\")";
+      }
+    }
+
+    public virtual string GuidConstructor(Guid target) {
+      //HACK: aktual only C#
+      if(target == Guid.Empty) {
+        return "Guid.Empty";
+      }
+      else {
+        return "Guid.Parse(\"" + target.ToString() + "\")";
+      }
+    }
+
+    public virtual string StringConstructor(string target) {
+      //HACK: aktual only C#
+      if (target == String.Empty) {
+        return "String.Empty";
+      }
+      else {
+        return "\"" + target + "\"";
+      }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="t"></param>
+    /// <param name="value"></param>
+    /// <param name="parseFromString"> defines, that 'value' is alywas a string, which needs to be parsed first!!!</param>
+    /// <returns></returns>
+    public virtual string GetContantValue(CommonType t, object value, bool parseFromString = false) {
+      if (value == null) {
+        return null;
+      }
+
+      if (t == CommonType.Boolean) { 
+        if (parseFromString) {
+        value = bool.Parse((string)value);
+        }
+        if((bool)value) {
+          return "true";
+        }
+        else {
+          return "false";
+        }
+      }
+      else if (t == CommonType.Byte) {
+        if (parseFromString) {
+        value = Byte.Parse((string)value);
+        }
+        return ((byte)value).ToString();
+      }
+      else if (t == CommonType.DateTime) {
+        if (parseFromString) {
+        value = DateTime.Parse((string)value);
+        }
+        return this.DateTimeConstructor((DateTime)value);
+
+      }
+      else if (t == CommonType.Decimal) {
+        if (parseFromString) {
+        value = Decimal.Parse((string)value);
+        }
+        return ((Decimal)value).ToString();
+
+      }
+      else if (t == CommonType.Double) {
+        if (parseFromString) {
+        value = Double.Parse((string)value);
+        }
+        return ((Double)value).ToString();
+
+      }
+      else if (t == CommonType.Guid) {
+        if (parseFromString) {
+        value = Guid.Parse((string)value);
+        }
+        return this.GuidConstructor((Guid)value);
+
+      }
+      else if (t == CommonType.Int16) {
+        if (parseFromString) {
+        value = Int16.Parse((string)value);
+        }
+        return ((Int16)value).ToString();
+
+      }
+      else if (t == CommonType.Int32) {
+        if (parseFromString) {
+        value = Int32.Parse((string)value);
+        }
+        return ((Int32)value).ToString();
+
+      }
+      else if (t == CommonType.Int64) {
+        if (parseFromString) {
+        value = Int64.Parse((string)value);
+        }
+        return ((Int64)value).ToString();
+
+      }
+      else if (t == CommonType.String) {
+
+        return this.StringConstructor((String)value);
+
+      }
+      else if (t == CommonType.Any) {
+        return value.ToString();
+
+      }
+      else if (t == CommonType.DynamicStructure) {
+          return null;
+
+      }
+      else  if (t == CommonType.StringDict) {
+        return null;
+      }
+      return null;
+    }
+
+
     public virtual string GetNull() {
       return "null";
     }
@@ -287,7 +415,16 @@ namespace CodeGeneration.Languages {
     public abstract string GetArrayTypeName(string sourceTypeName);
     public abstract string GetNullableTypeName(string sourceTypeName);
 
-    public static bool TryResolveToCommonType(Type t, ref CommonType commonType) {
+    public static bool TryResolveToCommonType(string typeName, ref CommonType commonType) {
+      object result = null;
+      if(Enum.TryParse (typeof (CommonType), typeName,true, out result)) {
+        commonType = (CommonType) result;
+        return true;
+      }
+      return false;
+    }
+
+    public virtual bool TryResolveToCommonType(Type t, ref CommonType commonType) {
       if (t == typeof(string)) {
         commonType = CommonType.String;
       }
@@ -337,8 +474,26 @@ namespace CodeGeneration.Languages {
         commonType = CommonType.StringDict;
       }
       else {
+        if (this.ConvertGenericDotNetGenericCollectiontypesToCommonTypes() && t.IsConstructedGenericType) {
+          var genBase = t.GetGenericTypeDefinition();
+          var genArg1 = t.GetGenericArguments()[0];
+          //if (typeof(List<>).MakeGenericType(genArg1).IsAssignableFrom(extendee)) {
+          //  extendee = genArg1;
+          //}
+          //else if (typeof(Collection<>).MakeGenericType(genArg1).IsAssignableFrom(extendee)) {
+          //  extendee = genArg1;
+          //}
+          if (genBase == typeof(Dictionary<,>)) {
+            commonType = CommonType.DynamicStructure;
+            return true;
+          }
+        }   
         return false;
       }
+      return true;
+    }
+
+    protected virtual bool ConvertGenericDotNetGenericCollectiontypesToCommonTypes() {
       return true;
     }
 

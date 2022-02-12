@@ -19,19 +19,18 @@
          // BASE-SETTINGS /////////////////////////////////////////////////////////////////////
 
            // Source:
-           //inputFile = Host.ResolvePath(".\\bin\\Demo.dll"),
-           inputFile = Host.ResolvePath("..\\..\\..\\ORSCF\\orscf-implementations-dotnet\\(Stage)\\Bin\\ORSCF.StudyManagement.Contract.dll"),
-           //interfaceTypeNamePattern = "MyBusinessNamespace.I*",
-           interfaceTypeNamePattern = "MedicalResearch.StudyManagement.StoreAccess.I*",
+           inputFile = Host.ResolvePath(".\\bin\\Demo.dll"),
+
+           interfaceTypeNamePattern = "MyBusinessNamespace.I*",
 
            requireXmlDocForNamespaces = new string[] { 
              "MyBusinessNamespace"
            },
 
            // Output:
-           template = "Wrappers",     // <- choose between: Models|Wrappers|MvcControllers|Clients|Interfaces
+           template = "Models",     // <- choose between: Models|Wrappers|MvcControllers|Clients|Interfaces
            
-           
+
            outputLanguage = "TS",   // <- choose between: C#|VB|TS|PHP
            generateTypeNamesInPhp = true,
 
@@ -49,12 +48,12 @@
            //},
 
            modelTypeNameIncludePatterns = new string[] {
-             "MedicalResearch.StudyManagement.*"
+                 "MedicalResearch.SubjectData.*"
            },
 
-           generateDataAnnotationsForLocalModels = true, //SOAP-STYLE ONLY
+           generateDataAnnotationsForLocalModels = false, //SOAP-STYLE ONLY
 
-           generateNavigationAnnotationsForLocalModels = true, //SOAP-STYLE ONLY
+           generateNavigationAnnotationsForLocalModels = false, //SOAP-STYLE ONLY
            //(requires also the "EntityAnnoations" Nuget Package!)
 
 

@@ -41,24 +41,32 @@ namespace CodeGeneration.Languages {
     }
 
     public override void BeginClass(AccessModifier access, string typeName, string inherits = null, bool partial = false) {
-      typeName = this.Escape(typeName);   
+      typeName = this.Escape(typeName);
+      var partialString = "";
+      if (partial) {
+        partialString = "partial ";
+      }
       if (string.IsNullOrWhiteSpace(inherits)) {
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}class {typeName} {{");
+        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}{partialString}class {typeName} {{");
       }
       else {
         inherits = this.Escape(inherits);
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}class {typeName} : {inherits} {{");
+        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}{partialString}class {typeName} : {inherits} {{");
       }
     }
 
     public override void BeginInterface(AccessModifier access, string typeName, string inherits = null, bool partial = false) {
+      var partialString = "";
+      if (partial) {
+        partialString = "partial ";
+      }
       typeName = this.Escape(typeName);
       if (string.IsNullOrWhiteSpace(inherits)) {
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}interface {typeName} {{");
+        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}{partialString}interface {typeName} {{");
       }
       else {
         inherits = this.Escape(inherits);
-        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}interface {typeName} : {inherits} {{");
+        this.WriteLineAndPush($"{this.GetAccessModifierString(access)}{partialString}interface {typeName} : {inherits} {{");
       }
     }
 
@@ -218,6 +226,10 @@ namespace CodeGeneration.Languages {
       if (t == CommonType.StringDict)
         return "Dictionary<String,String>";
       return "<UNKNOWN_TYPE>";
+    }
+
+    protected override bool ConvertGenericDotNetGenericCollectiontypesToCommonTypes() {
+      return false;
     }
 
     public override void Field(string typeName, string fieldName, string defaultValue = null, bool readOnly = false) {

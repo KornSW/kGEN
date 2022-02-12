@@ -85,7 +85,13 @@ namespace CodeGeneration.Models {
             if (String.IsNullOrWhiteSpace(svcMthPrmDoc)) {
               svcMthPrmDoc = XmlCommentAccessExtensions.GetDocumentation(svcMthPrm.ParameterType);
             }
-            directlyUsedModelTypes.Add(svcMthPrm.ParameterType);
+            //if(svcMthPrm.ParameterType.IsByRef) {
+
+
+            //}
+            //else{
+              directlyUsedModelTypes.Add(svcMthPrm.ParameterType);
+            //}
 
             if (!nsImports.Contains(svcMthPrm.ParameterType.Namespace)) {
               nsImports.Add(svcMthPrm.ParameterType.Namespace);
@@ -99,6 +105,9 @@ namespace CodeGeneration.Models {
 
       Action<List<Type>, Type> addRecursiveMethod = null;
       addRecursiveMethod = (collector, candidate) => {
+        if (candidate.IsByRef) {
+          candidate = candidate.GetElementType();
+        }
         if (candidate.IsArray) {
           candidate = candidate.GetElementType();
         }
@@ -141,7 +150,7 @@ namespace CodeGeneration.Models {
         addRecursiveMethod.Invoke(modelTypesToGenerate, canidate);
       }
 
-      foreach (Type modelTypeToGenerate in modelTypesToGenerate.OrderBy((m) => m.Name)) {
+      foreach (Type modelTypeToGenerate in modelTypesToGenerate.SortByUsage()) {
         string modelDoc = XmlCommentAccessExtensions.GetDocumentation(modelTypeToGenerate, true);
 
         innerWriter.WriteLine();

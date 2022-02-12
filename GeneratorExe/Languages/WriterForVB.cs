@@ -240,6 +240,10 @@ namespace CodeGeneration.Languages {
       return "<UNKNOWN_TYPE>";
     }
 
+    protected override bool ConvertGenericDotNetGenericCollectiontypesToCommonTypes() {
+      return false;
+    }
+
     public override void Field(string typeName, string fieldName, string defaultValue = null, bool readOnly = false) {
       string roString = "";
       if (readOnly) {

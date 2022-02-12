@@ -52,7 +52,7 @@ namespace CodeGeneration.Languages {
       }
       else {
         inherits = this.Escape(inherits);
-        this.WriteLineAndPush($"export class {typeName} : {inherits} {{");
+        this.WriteLineAndPush($"export class {typeName} extends {inherits} {{");
       }
     }
 
@@ -63,7 +63,7 @@ namespace CodeGeneration.Languages {
       }
       else {
         inherits = this.Escape(inherits);
-        this.WriteLineAndPush($"export interface {typeName} : {inherits} {{");
+        this.WriteLineAndPush($"export interface {typeName} extends {inherits} {{");
       }
     }
 
@@ -243,9 +243,9 @@ namespace CodeGeneration.Languages {
       if (t == CommonType.Any)
         return "any";
       if (t == CommonType.DynamicStructure)
-        return "object";
+        return "Object";
       if (t == CommonType.StringDict)
-        return "object";
+        return "Object";
       return "<UNKNOWN_TYPE>";
     }
 
@@ -267,8 +267,8 @@ namespace CodeGeneration.Languages {
       if (sourceTypeName == "List" && genericArguments.Length == 1) {
         return this.GetArrayTypeName(genericArguments[0]);
       }
-      else if (sourceTypeName == "Dictionary" && genericArguments.Length == 2 && genericArguments[0]==this.GetCommonTypeName(CommonType.String)) {
-        return "object";
+      else if (sourceTypeName == "Dictionary" && genericArguments.Length == 2) {
+        return "Object";
       }
       else {
         return sourceTypeName + "<" + String.Join(", ", genericArguments) + ">";

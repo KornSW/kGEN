@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
     <id>kGEN.Generator</id>
-    <version>1.3.0-localbuild</version>
+    <version>1.4.0-localbuild</version>
     <title>kGEN.Generator</title>
     <authors>KornSW</authors>
     <owners>KornSW</owners>
@@ -30,8 +30,11 @@
     <file src=".\GeneratorExe\bin\kGEN.exe" target="tools/bin" />
     <file src=".\GeneratorExe\bin\kGEN.runtimeconfig.json" target="tools/bin" />
     <file src=".\GeneratorExe\bin\kGEN.dll" target="tools/bin" />
+    
+    
     <file src=".\GeneratorExe\bin\Newtonsoft.Json.dll" target="tools/bin" />
-    <file src=".\GeneratorExe\bin\EntityAnnotations.dll" target="tools/bin" />    
+    <file src=".\GeneratorExe\bin\EntityAnnotations.dll" target="tools/bin" />
+    <file src=".\GeneratorExe\bin\EntitySchema.dll" target="tools/bin" />
     
   </files>
 </package>

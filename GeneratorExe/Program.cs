@@ -73,9 +73,18 @@ namespace CodeGeneration {
           gen.Generate(langSpecificWriter, templateSpecificCfg);
         }
         else if (String.Equals(rootCfg.template, "Models", StringComparison.CurrentCultureIgnoreCase)) {
-          var templateSpecificCfg = JsonConvert.DeserializeObject<Models.Cfg>(cfgRawJson);
-          var gen = new Models.Generator();
-          gen.Generate(langSpecificWriter, templateSpecificCfg);
+
+          if(rootCfg.inputFile.EndsWith(".json",StringComparison.InvariantCultureIgnoreCase)) {
+            var templateSpecificCfg = JsonConvert.DeserializeObject<ModelsFromSchema.Cfg>(cfgRawJson);
+            var gen = new ModelsFromSchema.Generator();
+            gen.Generate(langSpecificWriter, templateSpecificCfg);
+          }
+          else {
+            var templateSpecificCfg = JsonConvert.DeserializeObject<Models.Cfg>(cfgRawJson);
+            var gen = new Models.Generator();
+            gen.Generate(langSpecificWriter, templateSpecificCfg);
+          }
+
         }
         else if (String.Equals(rootCfg.template, "MvcControllers", StringComparison.CurrentCultureIgnoreCase)) {
           var templateSpecificCfg = JsonConvert.DeserializeObject<MvcControllers.Cfg>(cfgRawJson);

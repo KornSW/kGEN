@@ -39,16 +39,16 @@ namespace CodeGeneration {
 
   public class MethodParamDescriptor {
 
-    public static MethodParamDescriptor FromParameterInfo(ParameterInfo parameterInfo, Func<Type, string> customTypeNameEscapingMethod) {
+    public static MethodParamDescriptor FromParameterInfo(ParameterInfo parameterInfo, Func<Type, string> customTypeNameEscapingMethod, CodeWriterBase wtr) {
 
       Type pType = parameterInfo.ParameterType;
       if (parameterInfo.IsOut) {
         pType = pType.GetElementType();
       }
-      
+
       CommonType t = CommonType.NotCommon;
       string ct = null;
-      if (!CodeWriterBase.TryResolveToCommonType(pType, ref t)) {
+      if (!wtr.TryResolveToCommonType(pType, ref t)) {
         ct = customTypeNameEscapingMethod.Invoke(pType);
       }
 

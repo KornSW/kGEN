@@ -115,16 +115,14 @@ namespace CodeGeneration.Wrappers {
             initializer = "";
 
             nullable = false;
+
+            Type pt = svcMthPrm.ParameterType;
             if (svcMthPrm.IsOut) {
-              //pType = svcMthPrm.ParameterType.GetElementType().GetTypeNameSave(out nullable);
-              nullable = svcMthPrm.ParameterType.GetElementType().IsNullableType();
-              pType = writer.EscapeTypeName(svcMthPrm.ParameterType.GetElementType(),(t)=>cfg.nsPrefixForModelTypesUsage);
+              pt = pt.GetElementType();
             }
-            else {
-              //pType = svcMthPrm.ParameterType.GetTypeNameSave(out nullable);
-              nullable = svcMthPrm.ParameterType.IsNullableType();
-              pType = writer.EscapeTypeName(svcMthPrm.ParameterType, (t) => cfg.nsPrefixForModelTypesUsage);
-            }
+            nullable = pt.IsNullableType();
+            pType = writer.EscapeTypeName(pt, (t) => cfg.nsPrefixForModelTypesUsage);
+          
    
             if (nullable) {
               initializer = writer.GetNull();

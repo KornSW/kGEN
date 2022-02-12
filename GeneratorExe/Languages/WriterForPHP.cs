@@ -301,7 +301,16 @@ namespace CodeGeneration.Languages {
     }
 
     public override string GetGenericTypeName(string sourceTypeName, params string[] genericArguments) {
-      return sourceTypeName + "<" + String.Join(", ", genericArguments) + ">";
+      //HACK: in PHP there is no List or Dictionary
+      if (sourceTypeName == "List" && genericArguments.Length == 1) {
+        return this.GetArrayTypeName(genericArguments[0]);
+      }
+      else if (sourceTypeName == "Dictionary" && genericArguments.Length == 2) {
+        return "object";
+      }
+      else {
+        return sourceTypeName + "<" + String.Join(", ", genericArguments) + ">";
+      }
     }
 
     public override string GetArrayTypeName(string sourceTypeName) {
