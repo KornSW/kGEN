@@ -186,7 +186,11 @@ namespace CodeGeneration.Languages {
       }
     }
 
-    public override void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null) {
+    public override void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null, bool makeOptional = false) {
+
+      if (makeOptional) {
+        propType = this.GetNullableTypeName(propType);
+      }
 
       var line = $"{this.GetAccessModifierString(access)}{propType} {this.Escape(propName)} {{ get; set; }}";
 

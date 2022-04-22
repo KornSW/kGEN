@@ -12,8 +12,13 @@ namespace CodeGeneration.Models {
       "Foo.*"
     };
 
-  
     public bool generateNavigationAnnotationsForLocalModels = true;
+    
+    /// <summary>
+    /// all generated props are optional/nullable, if there is
+    /// no required-attribute in the source assembly
+    /// </summary>
+    public bool requiredPropsByAnnotation = true;
 
   }
 

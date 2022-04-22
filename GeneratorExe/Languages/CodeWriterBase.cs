@@ -202,7 +202,7 @@ namespace CodeGeneration.Languages {
     public abstract void Summary(string text, bool dumpToSingleLine, MethodParamDescriptor[] parameters = null);
     public abstract void AttributesLine(params string[] attribs);
 
-    public abstract void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null);
+    public abstract void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null, bool makeOptional = false);
 
     protected string Ppnd(string stringToPrepend, string stringToWrite) {
       if(string.IsNullOrWhiteSpace(stringToWrite)) {

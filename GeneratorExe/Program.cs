@@ -92,9 +92,18 @@ namespace CodeGeneration {
           gen.Generate(langSpecificWriter, templateSpecificCfg);
         }
         else if (String.Equals(rootCfg.template, "Clients", StringComparison.CurrentCultureIgnoreCase)) {
-          var templateSpecificCfg = JsonConvert.DeserializeObject<Clients.Cfg>(cfgRawJson);
-          var gen = new Clients.Generator();
-          gen.Generate(langSpecificWriter, templateSpecificCfg);
+
+          if(rootCfg.outputLanguage == "TS") {
+            var templateSpecificCfg = JsonConvert.DeserializeObject<ConnectorsRxQs.Cfg>(cfgRawJson);
+            var gen = new ConnectorsRxQs.Generator();
+            gen.Generate(langSpecificWriter, templateSpecificCfg);
+          }
+          else {
+            var templateSpecificCfg = JsonConvert.DeserializeObject<Clients.Cfg>(cfgRawJson);
+            var gen = new Clients.Generator();
+            gen.Generate(langSpecificWriter, templateSpecificCfg);
+          }
+
         }
         else if (String.Equals(rootCfg.template, "Interfaces", StringComparison.CurrentCultureIgnoreCase)) {
           var templateSpecificCfg = JsonConvert.DeserializeObject<Interfaces.Cfg>(cfgRawJson);

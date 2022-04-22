@@ -215,12 +215,20 @@ namespace CodeGeneration.Models {
             }
           }
 
+          bool isOptionalProp = prop.PropertyType.IsNullableType();
+          if (cfg.requiredPropsByAnnotation) {
+            if (!prop.GetCustomAttributes<RequiredAttribute>().Any()) {
+              isOptionalProp = true;
+            }
+          }
+          string propTypeName = innerWriter.EscapeTypeName(prop.PropertyType);
+
           if (modelTypeToGenerate.IsClass) {
-            innerWriter.InlineProperty( AccessModifier.Public, prop.Name, innerWriter.EscapeTypeName(prop.PropertyType));
+            innerWriter.InlineProperty( AccessModifier.Public, prop.Name, propTypeName, null, isOptionalProp);
           }
           else {
             //interfaces have no a.m.
-            innerWriter.InlineProperty(AccessModifier.None , prop.Name, innerWriter.EscapeTypeName(prop.PropertyType));
+            innerWriter.InlineProperty(AccessModifier.None , prop.Name, propTypeName, null, isOptionalProp);
           }
 
         }

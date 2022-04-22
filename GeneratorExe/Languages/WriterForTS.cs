@@ -209,13 +209,20 @@ namespace CodeGeneration.Languages {
       }
     }
 
-    public override void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null) {
+    public override void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null, bool makeOptional = false) {
+
+      if (makeOptional) {
+        //in ts, the name is declaringthe nullability
+        propName = propName + "?";
+      }
+
       if (!string.IsNullOrWhiteSpace(defaultValue)) {
         this.WriteLine($"public {this.Ftl(propName)} : {propType} = {defaultValue};");
       }
       else {
         this.WriteLine($"public {this.Ftl(propName)} : {propType};");
       }
+
     }
 
     public override string GetCommonTypeName(CommonType t) {

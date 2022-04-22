@@ -28,7 +28,7 @@
            },
 
            // Output:
-           template = "Models",     // <- choose between: Models|Wrappers|MvcControllers|Clients|Interfaces
+           template = "Clients",     // <- choose between: Models|Wrappers|MvcControllers|Clients|Interfaces
            
 
            outputLanguage = "TS",   // <- choose between: C#|VB|TS|PHP
@@ -95,7 +95,7 @@
            authHeaderName = "Authorization",
            throwClientExecptionsFromFaultProperty = true,
 
-           appendOwnerNameAsNamespace = true,
+           appendOwnerNameAsNamespace = false,
            removeLeadingCharCountForOwnerName = 1,
            removeTrailingCharCountForOwnerName = 0,
 
