@@ -104,6 +104,7 @@ namespace CodeGeneration.Models {
       }//foreach Interface
 
       Action<List<Type>, Type> addRecursiveMethod = null;
+
       addRecursiveMethod = (collector, candidate) => {
         if (candidate.IsByRef) {
           candidate = candidate.GetElementType();
@@ -113,15 +114,20 @@ namespace CodeGeneration.Models {
         }
         else if (candidate.IsGenericType) {
           var genBase = candidate.GetGenericTypeDefinition();
-          var genArg1 = candidate.GetGenericArguments()[0];
-          if (typeof(List<>).MakeGenericType(genArg1).IsAssignableFrom(candidate)) {
-            candidate = genArg1;
+          var genArgs = candidate.GetGenericArguments();
+          if (typeof(List<>).MakeGenericType(genArgs[0]).IsAssignableFrom(candidate)) {
+            candidate = genArgs[0];
           }
-          else if (typeof(Collection<>).MakeGenericType(genArg1).IsAssignableFrom(candidate)) {
-            candidate = genArg1;
+          else if (typeof(Collection<>).MakeGenericType(genArgs[0]).IsAssignableFrom(candidate)) {
+            candidate = genArgs[0];
+          }
+          else if (genBase == typeof(Dictionary<,>)) {
+            addRecursiveMethod.Invoke(collector, genArgs[0]);
+            addRecursiveMethod.Invoke(collector, genArgs[1]);
+            return;
           }
           if (genBase == typeof(Nullable<>)) {
-            candidate = genArg1;
+            candidate = genArgs[0];
           }
         }
 
