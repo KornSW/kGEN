@@ -94,8 +94,8 @@ namespace CodeGeneration {
         else if (String.Equals(rootCfg.template, "Clients", StringComparison.CurrentCultureIgnoreCase)) {
 
           if(rootCfg.outputLanguage == "TS") {
-            var templateSpecificCfg = JsonConvert.DeserializeObject<ConnectorsRxQs.Cfg>(cfgRawJson);
-            var gen = new ConnectorsRxQs.Generator();
+            var templateSpecificCfg = JsonConvert.DeserializeObject<ConnectorsAxiosJS.Cfg>(cfgRawJson);
+            var gen = new ConnectorsAxiosJS.Generator();
             gen.Generate(langSpecificWriter, templateSpecificCfg);
           }
           else {

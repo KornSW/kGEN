@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -51,6 +52,21 @@ namespace CodeGeneration.Languages {
       }
     }
 
+    public override string GetDefaultValueFromObject(object defaultValue) {
+      if (defaultValue == null) {
+        return "Nothing";
+      }
+      else if (defaultValue.GetType() == typeof(string)) {
+        return "\"" + defaultValue.ToString() + "\"";
+      }
+      else if (defaultValue.GetType() == typeof(bool)) {
+        return "False";
+      }
+      else {
+        return defaultValue.ToString();
+      }
+    }
+
     public override void BeginInterface(AccessModifier access, string typeName, string inherits = null, bool partial = false) {
       typeName = this.Escape(typeName);
       if (string.IsNullOrWhiteSpace(inherits)) {
@@ -70,18 +86,37 @@ namespace CodeGeneration.Languages {
       this.PopAndWriteLine("End Interface");
     }
 
-    protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null) {
+    protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null, bool async = false) {
       methodName = this.Escape(methodName);
       var keyWord = "Function";
       if (string.IsNullOrWhiteSpace(returnTypeName)) {
         keyWord = "Sub";
+        if (async) {
+          returnTypeName = "Task";
+        }
       }
       else{
+        if (async) {
+          returnTypeName = "Task(Of " + returnTypeName + ")";
+        }
         returnTypeName = " As " + returnTypeName;
       }
+
+      if (async) {
+        keyWord = "Async " + keyWord;
+      }
+
       string prms = "";
       if (parameters != null && parameters.Any()) {
         prms = String.Join(", ", parameters.Select((p) => {
+
+          string defaultSuffix = "";
+          string optionalPrefix = "";
+          if (p.IsOptional) {
+            defaultSuffix = " = " + this.GetDefaultValueFromObject(p.DefaultValue);
+            optionalPrefix = "optional ";
+          }
+
           string typeName;
           if (p.CommonType == CommonType.NotCommon) {
             typeName = p.CustomType;
@@ -89,19 +124,19 @@ namespace CodeGeneration.Languages {
           else {
             typeName = this.GetCommonTypeName(p.CommonType);
           }
-          if (p.IsOut) {
-            if (p.IsIn) {
+          if (p.IsOutbound) {
+            if (p.IsInbound) {
               //REF
-              return "ByRef " + p.ParamName + " As " + typeName;
+              return optionalPrefix + "ByRef " + p.ParamName + " As " + typeName + defaultSuffix;
             }
             else {
               //OUT
-              return "<Out> ByRef " + p.ParamName + " As " + typeName;
+              return optionalPrefix + "<Out> ByRef " + p.ParamName + " As " + typeName + defaultSuffix;
             }
           }
           else {
             //IN
-            return p.ParamName + " As " + typeName;
+            return optionalPrefix + p.ParamName + " As " + typeName + defaultSuffix;
           }
         }).ToArray());
       }
@@ -161,6 +196,35 @@ namespace CodeGeneration.Languages {
         }
       }
 
+    }
+
+    public override string GenerateAnonymousTypeDeclaration(Dictionary<string, string> fieldTypesByName, bool inline) {
+      return "System.Object";
+    }
+
+    public override string GenerateAnonymousTypeInitialization(Dictionary<string, string> fieldValuesByName, bool inline) {
+      var sb = new StringBuilder();
+      sb.Append("New with {");
+      bool first = true;
+      foreach (var fieldName in fieldValuesByName.Keys) {
+        if (first) {
+          first = false;
+        }
+        else {
+          sb.Append(", ");
+        }
+        if (!inline) {
+          sb.AppendLine();
+          sb.Append(new string(' ', this.Cfg.indentDepthPerLevel));
+        }
+        var value = fieldValuesByName[fieldName];
+        sb.Append($".{fieldName} = {value}");
+      }
+      if (!inline) {
+        sb.AppendLine();
+      }
+      sb.Append('}');
+      return sb.ToString();
     }
 
     public override void AttributesLine(params string[] attribs) {

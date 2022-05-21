@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -82,7 +83,22 @@ namespace CodeGeneration.Languages {
       this.PopAndWriteLine("}");
     }
 
-    protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null) {
+    public override string GetDefaultValueFromObject(object defaultValue) {
+      if (defaultValue == null) {
+        return "null";
+      }
+      else if (defaultValue.GetType() == typeof(string)) {
+        return "\"" + defaultValue.ToString() + "\"";
+      }
+      else if (defaultValue.GetType() == typeof(bool)) {
+        return "false";
+      }
+      else {
+        return defaultValue.ToString();
+      }
+    }
+
+    protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null, bool async = false) {
       methodName = this.Escape(methodName);
 
       if (!this.Cfg.generateTypeNamesInPhp || string.IsNullOrWhiteSpace(returnTypeName)) {
@@ -95,6 +111,12 @@ namespace CodeGeneration.Languages {
       string prms = "";
       if (parameters != null && parameters.Any()) {
         prms = String.Join(", ", parameters.Select((p) => {
+
+          string defaultSuffix = "";
+          if (p.IsOptional) {
+            defaultSuffix = " = " + this.GetDefaultValueFromObject(p.DefaultValue);
+          }
+
           string typeName;
           if (p.CommonType == CommonType.NotCommon) {
             typeName = p.CustomType;
@@ -104,20 +126,20 @@ namespace CodeGeneration.Languages {
           }
 
           string byRefPrefix = "";
-          if (p.IsOut) {
+          if (p.IsOutbound) {
             byRefPrefix = "&";
           }
 
           if (this.Cfg.generateTypeNamesInPhp) {
             if (p.CommonType == CommonType.NotCommon) {
-              return p.CustomType + " " + byRefPrefix + "$" + p.ParamName;
+              return p.CustomType + " " + byRefPrefix + "$" + p.ParamName + defaultSuffix;
             }
             else {
-              return this.GetCommonTypeName(p.CommonType) + " " + byRefPrefix + "$" + p.ParamName;
+              return this.GetCommonTypeName(p.CommonType) + " " + byRefPrefix + "$" + p.ParamName + defaultSuffix;
             }
           }
           else {
-            return byRefPrefix + "$" + p.ParamName;
+            return byRefPrefix + "$" + p.ParamName + defaultSuffix;
           }
         }).ToArray());
       }
@@ -200,6 +222,35 @@ namespace CodeGeneration.Languages {
         return;
       }
       this.WriteLine($"#[{string.Join(", ", attribs)}]");
+    }
+
+    public override string GenerateAnonymousTypeDeclaration(Dictionary<string, string> fieldTypesByName, bool inline) {
+      return "object";
+    }
+
+    public override string GenerateAnonymousTypeInitialization(Dictionary<string, string> fieldValuesByName, bool inline) {
+      var sb = new StringBuilder();
+      sb.Append("new class {");
+      bool first = true;
+      foreach (var fieldName in fieldValuesByName.Keys) {
+        if (first) {
+          first = false;
+        }
+        else {
+          sb.Append(", ");
+        }
+        if (!inline) {
+          sb.AppendLine();
+          sb.Append(new string(' ', this.Cfg.indentDepthPerLevel));
+        }
+        var value = fieldValuesByName[fieldName];
+        sb.Append($"{fieldName} {value}");
+      }
+      if (!inline) {
+        sb.AppendLine();
+      }
+      sb.Append('}');
+      return sb.ToString();
     }
 
     public override string GetAccessModifierString(AccessModifier access) {

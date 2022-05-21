@@ -157,7 +157,7 @@ namespace CodeGeneration.MvcControllers {
 
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
             if (svcMthPrm.IsOut) {
-              if (svcMthPrm.IsIn) {
+              if (svcMthPrm.ParameterType.IsByRef) {
                 writer.WriteLine($"var {writer.Ftl(svcMthPrm.Name)}Buffer = args.{writer.Ftl(svcMthPrm.Name)};");
               }
             }
@@ -166,7 +166,7 @@ namespace CodeGeneration.MvcControllers {
           var @params = new List<string>();
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
             if (svcMthPrm.IsOut) {
-              if (svcMthPrm.IsIn) {
+              if (svcMthPrm.ParameterType.IsByRef) {
                 @params.Add($"ref {writer.Ftl(svcMthPrm.Name)}Buffer");
               }
               else {

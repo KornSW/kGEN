@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Reflection;
 using CodeGeneration.Languages;
+using CodeGeneration.Inspection;
 
 namespace CodeGeneration {
 
@@ -53,11 +54,12 @@ namespace CodeGeneration {
       }
 
       return new MethodParamDescriptor {
+        DefaultValue = parameterInfo.DefaultValue,
         ParamName = parameterInfo.Name,
         IsOptional = parameterInfo.IsOptional,
         Description = parameterInfo.GetDocumentation(false),
-        IsIn = parameterInfo.IsIn,
-        IsOut = parameterInfo.IsOut,
+        IsInbound = parameterInfo.IsInbound(),
+        IsOutbound = parameterInfo.IsOutbound(),
         CommonType = t,
         CustomType = ct
       };
@@ -67,10 +69,12 @@ namespace CodeGeneration {
     public MethodParamDescriptor() {
     }
 
+    public object DefaultValue { get; set; } = null;
+
     public String ParamName { get; set; } = null;
     public bool IsOptional { get; set; } = false;
-    public bool IsIn { get; set; } = false;
-    public bool IsOut { get; set; } = false;
+    public bool IsInbound { get; set; } = false;
+    public bool IsOutbound { get; set; } = false;
     public String Description { get; set; } = null;
     public CommonType CommonType { get; set; } = CommonType.NotCommon;
     public String CustomType { get; set; } = null;

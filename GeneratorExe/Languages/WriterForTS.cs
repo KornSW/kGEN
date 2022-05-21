@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -75,14 +76,54 @@ namespace CodeGeneration.Languages {
       this.PopAndWriteLine("}");
     }
 
-    protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null) {
-      methodName = this.Escape(methodName);
-      if (string.IsNullOrWhiteSpace(returnTypeName)) {
-        returnTypeName = "void";
+    public override string GetDefaultValueFromObject(object defaultValue) {
+      if (defaultValue == null) {
+        return "null";
       }
+      else if (defaultValue.GetType() == typeof(string)) {
+        return "'" + defaultValue.ToString() + "'";
+      }
+      else if (defaultValue.GetType() == typeof(bool)) {
+        return "false";
+      }
+      else {
+        return defaultValue.ToString();
+      }
+    }
+
+    protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null, bool async = false) {
+      methodName = this.Escape(methodName);
+
+      if (string.IsNullOrWhiteSpace(returnTypeName)) {
+        if (async) {
+          returnTypeName = "Promise<void>";
+        }
+        else {
+          returnTypeName = "void";
+        }
+      }
+      else {
+        if (async) {
+          returnTypeName = "Promise<" + returnTypeName + ">";
+        }
+      }
+
       string prms = "";
       if (parameters != null && parameters.Any()) {
         prms = String.Join(", ", parameters.Select((p) => {
+
+          string defaultSuffix = "";
+          string paramNullableSuffix = "";
+          if (p.IsOptional) {
+            //in TS interfaces must not have parameter-initializers!
+            if(p.DefaultValue != null && !isInterfaceDeclartion) {
+              defaultSuffix = " = " + this.GetDefaultValueFromObject(p.DefaultValue);
+            }
+            else {
+              paramNullableSuffix = "?";
+            }
+          }
+
           string typeName;
           if (p.CommonType == CommonType.NotCommon) {
             typeName = p.CustomType;
@@ -90,19 +131,19 @@ namespace CodeGeneration.Languages {
           else {
             typeName = this.GetCommonTypeName(p.CommonType);
           }
-          if (p.IsOut) {
-            if (p.IsIn) {
+          if (p.IsOutbound) {
+            if (p.IsInbound) {
               //REF
-              return p.ParamName + " :  { ref : " + typeName + " }";
+              return p.ParamName + paramNullableSuffix + " :  { ref : " + typeName + " }" + defaultSuffix;
             }
             else {
               //OUT
-             return p.ParamName + " : (out: " + typeName  + ") => void" ;
+             return p.ParamName + paramNullableSuffix + " : (out: " + typeName  + ") => void + defaultSuffix" + defaultSuffix;
             }
           }
           else {
             //IN
-            return p.ParamName + " : " + typeName;
+            return p.ParamName + paramNullableSuffix + " : " + typeName + defaultSuffix;
           }
         }).ToArray());
       }
@@ -176,6 +217,56 @@ namespace CodeGeneration.Languages {
         }
       }
 
+    }
+
+    public override string GenerateAnonymousTypeDeclaration(Dictionary<string, string> fieldTypesByName, bool inline) {
+      var sb = new StringBuilder();
+      sb.Append("{");
+      bool first = true;
+      foreach (var fieldName in fieldTypesByName.Keys) {
+        if (first) {
+          first = false;
+        }
+        else {
+          sb.Append(", ");
+        }
+        if (!inline) {
+          sb.AppendLine();
+          sb.Append(new string(' ', this.Cfg.indentDepthPerLevel));
+        }
+        var typeName = fieldTypesByName[fieldName];
+        sb.Append($"{fieldName}: {typeName}");
+      }
+      if (!inline) {
+        sb.AppendLine();
+      }
+      sb.Append('}');
+      return sb.ToString();
+    }
+
+    public override string GenerateAnonymousTypeInitialization(Dictionary<string, string> fieldValuesByName, bool inline) {
+      var sb = new StringBuilder();
+      sb.Append("{");
+      bool first = true;
+      foreach (var fieldName in fieldValuesByName.Keys) {
+        if (first) {
+          first = false;
+        }
+        else {
+          sb.Append(", ");
+        }
+        if (!inline) {
+          sb.AppendLine();
+          sb.Append(new string(' ', this.Cfg.indentDepthPerLevel));
+        }
+        var value = fieldValuesByName[fieldName];
+        sb.Append($"{fieldName}: {value}");
+      }
+      if (!inline) {
+        sb.AppendLine();
+      }
+      sb.Append("}");
+      return sb.ToString();
     }
 
     public override void AttributesLine(params string[] attribs) {

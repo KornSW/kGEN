@@ -11,7 +11,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace CodeGeneration.ConnectorsRxQs {
+namespace CodeGeneration.ConnectorsAxiosJS {
 
   public class Generator {
 
@@ -21,13 +21,14 @@ namespace CodeGeneration.ConnectorsRxQs {
         throw new Exception("For the selected template is currenty only language 'TS' supported!");
       }
 
-      writer.WriteLine("import { Observable, Subscription, Subject, BehaviorSubject } from 'rxjs';");
-      writer.WriteLine("import { map } from 'rxjs/operators';");
+      //writer.WriteLine("import { Observable, Subscription, Subject, BehaviorSubject } from 'rxjs';");
+      //writer.WriteLine("import { map } from 'rxjs/operators';");
+      writer.WriteLine("import { axios, AxiosInstance } from 'axios';");
+
       writer.WriteLine("");
       writer.WriteLine($"import * as DTOs from '{cfg.ImportDtosFrom}';");
       writer.WriteLine($"import * as Models from '{cfg.ImportModelsFrom}';");
       writer.WriteLine($"import * as Interfaces from '{cfg.ImportInterfacesFrom}';");
-      writer.WriteLine("");
 
       var nsImports = new List<string>();
       //nsImports.Add("{ Observable, Subscription, Subject, BehaviorSubject } from 'rxjs'");
@@ -92,9 +93,15 @@ namespace CodeGeneration.ConnectorsRxQs {
 
       foreach (Type svcInt in svcInterfaces) {
         string endpointName = svcInt.Name;
-        if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
-          endpointName = endpointName.Substring(1);
+        if (cfg.removeLeadingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeLeadingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(cfg.removeLeadingCharCountForOwnerName);
         }
+        if (cfg.removeTrailingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeTrailingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(0, endpointName.Length - cfg.removeTrailingCharCountForOwnerName);
+        }
+        //if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
+        //  endpointName = endpointName.Substring(1);
+        //}
         string svcIntDoc = XmlCommentAccessExtensions.GetDocumentation(svcInt);
 
         if (cfg.appendOwnerNameAsNamespace) {
@@ -119,7 +126,7 @@ namespace CodeGeneration.ConnectorsRxQs {
         writer.WriteLineAndPush($"constructor(");
         writer.WriteLine("private rootUrlResolver: () => string,");
         writer.WriteLine("private apiTokenResolver: () => string,");
-        writer.WriteLine("private httpPostMethod: (url: string, requestObject: any, apiToken: string) => Observable<any>");
+        writer.WriteLine("private httpPostMethod: (url: string, requestObject: any, apiToken: string) => Promise<any>");
         writer.PopAndWriteLine("){}");
 
         writer.WriteLine();
@@ -133,8 +140,6 @@ namespace CodeGeneration.ConnectorsRxQs {
         writer.WriteLine($"return rootUrl + '/{writer.Ftl(endpointName)}/';");
         writer.PopAndWriteLine("}");
         writer.PopAndWriteLine("}");
-
-        writer.WriteLine();
 
         foreach (MethodInfo svcMth in svcInt.GetMethods()) {
           string svcMthDoc = XmlCommentAccessExtensions.GetDocumentation(svcMth, true);
@@ -157,14 +162,14 @@ namespace CodeGeneration.ConnectorsRxQs {
             //}
 
            Type pt = svcMthPrm.ParameterType;
-            if (svcMthPrm.IsOut) {
+            if (svcMthPrm.IsOutbound()) {
               pt = pt.GetElementType();
 
               var ptName = writer.EscapeTypeName(pt, (t)=>"Models.");
 
               outParams.Add(new Tuple<string, string>(svcMthPrm.Name, ptName));
             }
-            if (svcMthPrm.IsIn) {
+            if (svcMthPrm.IsInbound()) {
 
               var ptName = writer.EscapeTypeName(pt, (t)=>"Models.");
 
@@ -177,22 +182,7 @@ namespace CodeGeneration.ConnectorsRxQs {
               if (svcMthPrm.IsOptional) {
                 //were implementing the interface "as it is"
 
-                string defaultValueString = "";
-
-                if (svcMthPrm.DefaultValue == null) {
-                  defaultValueString = " = null";
-                }
-                else if(svcMthPrm.DefaultValue.GetType() == typeof(string)) {
-                  defaultValueString = " = \"" + svcMthPrm.DefaultValue.ToString() + "\"";
-                }
-                else if (svcMthPrm.DefaultValue.GetType() == typeof(bool)) {
-                  defaultValueString = " = false";
-                }
-                else {
-                  defaultValueString = " = " + svcMthPrm.DefaultValue.ToString() + "";
-                }
-
-                paramSignature.Add($"{svcMthPrm.Name}: {ptName} = {defaultValueString}");
+                paramSignature.Add($"{svcMthPrm.Name}: {ptName} = {writer.GetDefaultValueFromParameter(svcMthPrm)}");
 
               }
               else {
@@ -204,19 +194,19 @@ namespace CodeGeneration.ConnectorsRxQs {
           string returnType;
           if (svcMth.ReturnType == null || svcMth.ReturnType == typeof(void)) {
             if (outParams.Any()) {
-              returnType = $"Observable<{{{String.Join(", ", outParams.Select((t)=> t.Item1 + ": " + t.Item2))}}}>";
+              returnType = $"Promise<{{{String.Join(", ", outParams.Select((t)=> t.Item1 + ": " + t.Item2))}}}>";
             }
             else {
-              returnType = "Observable<void>";
+              returnType = "Promise<void>";
             }
           }
           else {
             var retTypeName = writer.EscapeTypeName(svcMth.ReturnType, (t) => "Models.");
             if (outParams.Any()) {
-              returnType = $"Observable<{{{String.Join(", ", outParams.Select((t)=> t.Item1 + ": " + t.Item2))}, return: {retTypeName}}}>";
+              returnType = $"Promise<{{{String.Join(", ", outParams.Select((t)=> t.Item1 + ": " + t.Item2))}, return: {retTypeName}}}>";
             }
             else {
-              returnType = $"Observable<{retTypeName}>";
+              returnType = $"Promise<{retTypeName}>";
             }
           }
 
@@ -228,7 +218,7 @@ namespace CodeGeneration.ConnectorsRxQs {
           int i = 0;
           int pCount = svcMth.GetParameters().Length;
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
-            if (svcMthPrm.IsIn) {
+            if (svcMthPrm.IsInbound()) {
               i++;
               if(i < pCount) {
                 writer.WriteLine($"{svcMthPrm.Name}: {svcMthPrm.Name},");
@@ -243,7 +233,7 @@ namespace CodeGeneration.ConnectorsRxQs {
           writer.WriteLine();
           writer.WriteLine($"let url = this.getEndpointUrl() + '{writer.Ftl(svcMth.Name)}';");
 
-          writer.WriteLineAndPush($"return this.httpPostMethod(url, requestWrapper, this.apiTokenResolver()).pipe(map(");
+          writer.WriteLineAndPush($"return this.httpPostMethod(url, requestWrapper, this.apiTokenResolver()).then(");
           writer.WriteLineAndPush($"(r) => {{");
           writer.WriteLine($"let responseWrapper = (r as DTOs.{svcMth.Name}Response);");
 
@@ -273,7 +263,7 @@ namespace CodeGeneration.ConnectorsRxQs {
           }
 
          writer.PopAndWriteLine("}");
-         writer.PopAndWriteLine("));");
+         writer.PopAndWriteLine(");");
 
          writer.PopAndWriteLine("}");//method
 
@@ -296,8 +286,11 @@ namespace CodeGeneration.ConnectorsRxQs {
 
       foreach (Type svcInt in svcInterfaces) {
         string endpointName = svcInt.Name;
-        if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
-          endpointName = endpointName.Substring(1);
+        if (cfg.removeLeadingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeLeadingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(cfg.removeLeadingCharCountForOwnerName);
+        }
+        if (cfg.removeTrailingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeTrailingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(0, endpointName.Length - cfg.removeTrailingCharCountForOwnerName);
         }
         writer.WriteLine();
         writer.WriteLine($"private {writer.Ftl(endpointName)}Client: {endpointName}Client;");
@@ -305,16 +298,35 @@ namespace CodeGeneration.ConnectorsRxQs {
 
       writer.WriteLine();
 
+      writer.WriteLine("private axiosHttpApi: AxiosInstance;"); 
+      writer.WriteLine();
+
       writer.WriteLineAndPush($"constructor(");
       writer.WriteLine("private rootUrlResolver: () => string,");
       writer.WriteLine("private apiTokenResolver: () => string,");
-      writer.WriteLine("private httpPostMethod: (url: string, requestObject: any, apiToken: string) => Observable<any>");
+      writer.WriteLine("private httpPostMethod: (url: string, requestObject: any, apiToken: string) => Promise<any>");
       writer.PopAndWriteLine("){");
       writer.WriteLineAndPush("");
+
+      writer.WriteLineAndPush("if (this.httpPostMethod == null) {");
+      writer.WriteLine("this.axiosHttpApi = axios.create({ baseURL: this.rootUrlResolver() });");
+      writer.WriteLineAndPush("this.httpPostMethod = (url, requestObject, apiToken) => {");
+      writer.WriteLineAndPush("return this.axiosHttpApi.post(url, requestObject, {");
+      writer.WriteLineAndPush("headers: {");
+      writer.WriteLine("Authorization: apiToken");
+      writer.PopAndWriteLine("}"); //headers
+      writer.PopAndWriteLine("});");//option-propety-bag in post-call
+      writer.PopAndWriteLine("};");//lambda method
+      writer.PopAndWriteLine("}");//if-block
+      writer.WriteLine();
+
       foreach (Type svcInt in svcInterfaces) {
         string endpointName = svcInt.Name;
-        if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
-          endpointName = endpointName.Substring(1);
+        if (cfg.removeLeadingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeLeadingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(cfg.removeLeadingCharCountForOwnerName);
+        }
+        if (cfg.removeTrailingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeTrailingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(0, endpointName.Length - cfg.removeTrailingCharCountForOwnerName);
         }
         writer.WriteLine($"this.{writer.Ftl(endpointName)}Client = new {endpointName}Client(this.rootUrlResolver, this.apiTokenResolver, this.httpPostMethod);");    
       }
@@ -336,9 +348,17 @@ namespace CodeGeneration.ConnectorsRxQs {
       foreach (Type svcInt in svcInterfaces) {
 
         string endpointName = svcInt.Name;
-        if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
-          endpointName = endpointName.Substring(1);
+
+        if (cfg.removeLeadingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeLeadingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(cfg.removeLeadingCharCountForOwnerName);
         }
+        if (cfg.removeTrailingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeTrailingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(0, endpointName.Length - cfg.removeTrailingCharCountForOwnerName);
+        }
+
+        //if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
+        //  endpointName = endpointName.Substring(1);
+        //}
         string svcIntDoc = XmlCommentAccessExtensions.GetDocumentation(svcInt);
 
         writer.WriteLine();

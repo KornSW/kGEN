@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MyBusinessNamespace {
 
-  public interface IFoo {
+  public interface IFooService {
 
     bool Foooo(string a, out int b);
 

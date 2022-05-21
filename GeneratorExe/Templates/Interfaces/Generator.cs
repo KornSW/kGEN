@@ -90,10 +90,28 @@ namespace CodeGeneration.Interfaces {
           Func<Type,string> nsPrefixGetter = (t)=> cfg.nsPrefixForModelTypesUsage;
 
           var prms = new List<MethodParamDescriptor>();
+          var paramsForReturnBag = new Dictionary<string, string>();
+
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
             var desc = MethodParamDescriptor.FromParameterInfo(svcMthPrm, (t)=> writer.EscapeTypeName (t, nsPrefixGetter), writer);
+            if (cfg.transformRefAndOutArgsToReturnPropertyBag) {
+              if (desc.IsOutbound) {
+                if (desc.CommonType == CommonType.NotCommon) {
+                  paramsForReturnBag.Add(desc.ParamName, desc.CustomType);
+                }
+                else {
+                  paramsForReturnBag.Add(desc.ParamName, writer.GetCommonTypeName(desc.CommonType));
+                }
+                desc.IsOutbound = false;
+              }
+              if (desc.IsInbound) {
+                prms.Add(desc);
+              }
+            }
+            else {
+              prms.Add(desc);
+            }
 
-            prms.Add(desc);
             if (!cfg.writeCustomImportsOnly) {
               writer.RequireImport(svcMthPrm.ParameterType.Namespace);
             }
@@ -101,12 +119,21 @@ namespace CodeGeneration.Interfaces {
 
           writer.Summary(svcMthDoc, false, prms.ToArray());
 
-          if(svcMth.ReturnType.FullName == "System.Void") {
-            writer.MethodInterface(svcMth.Name, null, prms.ToArray());
+          if (paramsForReturnBag.Any()) {
+            if (svcMth.ReturnType.FullName != "System.Void") {
+              var returnTypeName = writer.EscapeTypeName(svcMth.ReturnType, nsPrefixGetter);
+              paramsForReturnBag.Add("return", returnTypeName);
+            }
+            var anonymousReturnBagType = writer.GenerateAnonymousTypeDeclaration(paramsForReturnBag, true);
+            writer.MethodInterface(svcMth.Name, anonymousReturnBagType, prms.ToArray(), cfg.generateAsyncMethods);
+
+          }
+          else if (svcMth.ReturnType.FullName == "System.Void") {
+            writer.MethodInterface(svcMth.Name, null, prms.ToArray(), cfg.generateAsyncMethods);
           }
           else {
             var returnTypeName = writer.EscapeTypeName(svcMth.ReturnType, nsPrefixGetter);
-            writer.MethodInterface(svcMth.Name, returnTypeName, prms.ToArray());
+            writer.MethodInterface(svcMth.Name, returnTypeName, prms.ToArray(), cfg.generateAsyncMethods);
           }
 
         }//foreach Method

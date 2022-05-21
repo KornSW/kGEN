@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CodeGeneration.ConnectorsRxQs {
+namespace CodeGeneration.ConnectorsAxiosJS {
 
   public class Cfg: RootCfg {
 

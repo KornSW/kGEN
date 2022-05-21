@@ -97,11 +97,12 @@
 
            appendOwnerNameAsNamespace = false,
            removeLeadingCharCountForOwnerName = 1,
-           removeTrailingCharCountForOwnerName = 0,
+           removeTrailingCharCountForOwnerName = 7,
 
          // INTERFACES ////////////////////////////////////////////////////////////////////////
  
-   
+           transformRefAndOutArgsToReturnPropertyBag = true,
+           generateAsyncMethods = true
 
          //////////////////////////////////////////////////////////////////////////////////////
        };

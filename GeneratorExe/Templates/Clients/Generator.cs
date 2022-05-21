@@ -190,7 +190,7 @@ namespace CodeGeneration.Clients {
             string pfx = "";
             if (svcMthPrm.IsOut) {
               pt = pt.GetElementType();
-              if (svcMthPrm.IsIn) {
+              if (svcMthPrm.ParameterType.IsByRef) {
                 pfx = "ref ";
               }
               else {

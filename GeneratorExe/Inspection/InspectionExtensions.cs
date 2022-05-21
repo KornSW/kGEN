@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -32,6 +33,16 @@ namespace CodeGeneration.Inspection {
         return extendee.Name;
       }
 
+    }
+    public static bool IsInbound(this ParameterInfo extendee) {
+       //return extendee.IsIn || extendee.ParameterType.IsByRef;//|| extendee.IsOptional;
+      return !extendee.IsOut;// || extendee.IsOptional;
+
+
+    }
+
+    public static bool IsOutbound(this ParameterInfo extendee) {
+      return extendee.IsOut;
     }
 
     public static Type[] SortByUsage(this IEnumerable<Type> extendee) {

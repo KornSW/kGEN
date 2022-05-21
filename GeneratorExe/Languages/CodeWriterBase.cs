@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Reflection;
 
 namespace CodeGeneration.Languages {
 
@@ -183,15 +184,27 @@ namespace CodeGeneration.Languages {
     public abstract void EndClass();
     public abstract void EndInterface();
 
-    public void MethodInterface(string methodName, string returnTypeName = null,MethodParamDescriptor[] parameters = null) {
-      this.MethodCore(AccessModifier.None, methodName, returnTypeName, true, parameters);
+    public void MethodInterface(string methodName, string returnTypeName = null,MethodParamDescriptor[] parameters = null, bool async = false) {
+      this.MethodCore(AccessModifier.None, methodName, returnTypeName, true, parameters, async);
     }
 
-    protected void BeginMethod(AccessModifier access, string methodName, string returnTypeName = null, MethodParamDescriptor[] parameters = null) {
-      this.MethodCore(access, methodName, returnTypeName, false, parameters);
+    protected void BeginMethod(AccessModifier access, string methodName, string returnTypeName = null, MethodParamDescriptor[] parameters = null, bool async = false) {
+      this.MethodCore(access, methodName, returnTypeName, false, parameters, async);
     }
 
-    protected abstract void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null);
+
+
+    protected abstract void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null, bool async = false);
+      
+    public abstract string GenerateAnonymousTypeDeclaration(Dictionary<string,string> fieldTypesByName, bool inline);
+    public abstract string GenerateAnonymousTypeInitialization(Dictionary<string, string> fieldValuesByName, bool inline);
+    
+    public string GetDefaultValueFromParameter(ParameterInfo param) {
+      return this.GetDefaultValueFromObject(param.DefaultValue);
+    }
+
+    public abstract string GetDefaultValueFromObject(object param);
+
 
     public abstract void EndMethod();
     public abstract void Return(string result = null);
