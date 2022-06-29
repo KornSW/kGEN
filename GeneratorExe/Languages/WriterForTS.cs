@@ -76,15 +76,45 @@ namespace CodeGeneration.Languages {
       this.PopAndWriteLine("}");
     }
 
+    public override bool TryGetTypespecificNullValue(Type t, out string defaultValue) {
+
+      if (t.IsNullableType()) {
+        defaultValue = this.GetNull();
+      }
+      else if (t.IsArray) {
+        defaultValue = this.GetNull();
+      }
+      else if (t == typeof(string)) {
+        defaultValue = "\"\"";
+      }
+      else if (t == typeof(bool)) {
+        defaultValue = "false";
+      }
+      else if (t == typeof(int)) {
+        defaultValue = "0";
+      }
+      else if (t == typeof(decimal)) {
+        defaultValue = "0M";
+      }
+      else {
+        defaultValue = null;
+        return false;
+      }
+      return true;
+    }
+
     public override string GetDefaultValueFromObject(object defaultValue) {
       if (defaultValue == null) {
-        return "null";
+        return this.GetNull();
       }
       else if (defaultValue.GetType() == typeof(string)) {
         return "'" + defaultValue.ToString() + "'";
       }
       else if (defaultValue.GetType() == typeof(bool)) {
         return "false";
+      }
+      else if (defaultValue.GetType() == typeof(int)) {
+        return "0";
       }
       else {
         return defaultValue.ToString();
@@ -117,7 +147,10 @@ namespace CodeGeneration.Languages {
           if (p.IsOptional) {
             //in TS interfaces must not have parameter-initializers!
             if(p.DefaultValue != null && !isInterfaceDeclartion) {
-              defaultSuffix = " = " + this.GetDefaultValueFromObject(p.DefaultValue);
+              var def = this.GetDefaultValueFromObject(p.DefaultValue);
+              if(def != this.GetNull()) {
+                defaultSuffix = " = " + def;
+              }
             }
             else {
               paramNullableSuffix = "?";
@@ -138,7 +171,7 @@ namespace CodeGeneration.Languages {
             }
             else {
               //OUT
-             return p.ParamName + paramNullableSuffix + " : (out: " + typeName  + ") => void + defaultSuffix" + defaultSuffix;
+             return p.ParamName + paramNullableSuffix + " : (out: " + typeName  + ") => void " + defaultSuffix;
             }
           }
           else {
@@ -306,14 +339,56 @@ namespace CodeGeneration.Languages {
         //in ts, the name is declaringthe nullability
         propName = propName + "?";
       }
+      else if (string.IsNullOrWhiteSpace(defaultValue) || defaultValue != this.GetNull()) {
+        CommonType ct = CommonType.NotCommon;
+        if(CodeWriterBase.TryResolveToCommonType(propType, ref ct)) {
+          defaultValue = this.GetDefaultValueFromCommonType(ct);
+        }
+        else if(propType.EndsWith("[]")) {
+          defaultValue = "[]";
+        }
+        else {
+          defaultValue = "new " + propType + "()";
+        }
+      }
 
-      if (!string.IsNullOrWhiteSpace(defaultValue)) {
-        this.WriteLine($"public {this.Ftl(propName)} : {propType} = {defaultValue};");
+      if (!string.IsNullOrWhiteSpace(defaultValue) && defaultValue != this.GetNull()) {
+        this.WriteLine($"public {this.Ftl(propName)}: {propType} = {defaultValue};");
       }
       else {
-        this.WriteLine($"public {this.Ftl(propName)} : {propType};");
+        this.WriteLine($"public {this.Ftl(propName)}: {propType};");
       }
 
+    }
+
+    public  string GetDefaultValueFromCommonType(CommonType t) {
+      if (t == CommonType.Boolean)
+        return "false";
+      if (t == CommonType.Byte)
+        return "0";
+      if (t == CommonType.DateTime)
+        return "new Date(1900,1,1)";
+      if (t == CommonType.Decimal)
+        return "0";
+      if (t == CommonType.Double)
+        return "0";
+      if (t == CommonType.Guid)
+        return "'00000000-0000-0000-0000-000000000000'";
+      if (t == CommonType.Int16)
+        return "0";
+      if (t == CommonType.Int32)
+        return "0";
+      if (t == CommonType.Int64)
+        return "0";
+      if (t == CommonType.String)
+        return "''";
+      if (t == CommonType.Any)
+        return "{}";
+      if (t == CommonType.DynamicStructure)
+        return "{}";
+      if (t == CommonType.StringDict)
+        return "{}";
+      return "<UNKNOWN_TYPE>";
     }
 
     public override string GetCommonTypeName(CommonType t) {

@@ -23,7 +23,7 @@ namespace CodeGeneration.ConnectorsAxiosJS {
 
       //writer.WriteLine("import { Observable, Subscription, Subject, BehaviorSubject } from 'rxjs';");
       //writer.WriteLine("import { map } from 'rxjs/operators';");
-      writer.WriteLine("import { axios, AxiosInstance } from 'axios';");
+      writer.WriteLine("import axios, { AxiosInstance } from 'axios';");
 
       writer.WriteLine("");
       writer.WriteLine($"import * as DTOs from '{cfg.ImportDtosFrom}';");
@@ -181,8 +181,14 @@ namespace CodeGeneration.ConnectorsAxiosJS {
 
               if (svcMthPrm.IsOptional) {
                 //were implementing the interface "as it is"
-
-                paramSignature.Add($"{svcMthPrm.Name}: {ptName} = {writer.GetDefaultValueFromParameter(svcMthPrm)}");
+                var defaultSuffix = writer.GetDefaultValueFromParameter(svcMthPrm);
+                if (defaultSuffix != writer.GetNull()) {
+                  defaultSuffix = " = " + defaultSuffix;
+                }
+                else {
+                  defaultSuffix = "";
+                }
+                paramSignature.Add($"{svcMthPrm.Name}: {ptName}{defaultSuffix}");
 
               }
               else {
@@ -298,19 +304,22 @@ namespace CodeGeneration.ConnectorsAxiosJS {
 
       writer.WriteLine();
 
-      writer.WriteLine("private axiosHttpApi: AxiosInstance;"); 
+      writer.WriteLine("private axiosHttpApi?: AxiosInstance;"); 
       writer.WriteLine();
 
       writer.WriteLineAndPush($"constructor(");
       writer.WriteLine("private rootUrlResolver: () => string,");
       writer.WriteLine("private apiTokenResolver: () => string,");
-      writer.WriteLine("private httpPostMethod: (url: string, requestObject: any, apiToken: string) => Promise<any>");
+      writer.WriteLine("private httpPostMethod?: (url: string, requestObject: any, apiToken: string) => Promise<any>");
       writer.PopAndWriteLine("){");
       writer.WriteLineAndPush("");
 
-      writer.WriteLineAndPush("if (this.httpPostMethod == null) {");
+      writer.WriteLineAndPush("if (!this.httpPostMethod) {");
       writer.WriteLine("this.axiosHttpApi = axios.create({ baseURL: this.rootUrlResolver() });");
       writer.WriteLineAndPush("this.httpPostMethod = (url, requestObject, apiToken) => {");
+      writer.WriteLineAndPush("if(!this.axiosHttpApi) {");
+      writer.WriteLine("this.axiosHttpApi = axios.create({ baseURL: this.rootUrlResolver() });");
+      writer.PopAndWriteLine("}");//if-block
       writer.WriteLineAndPush("return this.axiosHttpApi.post(url, requestObject, {");
       writer.WriteLineAndPush("headers: {");
       writer.WriteLine("Authorization: apiToken");

@@ -27,6 +27,14 @@ namespace CodeGeneration {
 
     public string codeGenInfoHeader = "WARNING: THIS IS GENERATED CODE - PLEASE DONT EDIT DIRECTLY - YOUR CHANGES WILL BE LOST!";
 
+
+
+    /// <summary>
+    /// all generated props are optional/nullable, if there is
+    /// no required-attribute in the source assembly
+    /// </summary>
+    public bool requiredPropsByAnnotation = true;
+
   }
 
 }

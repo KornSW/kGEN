@@ -79,6 +79,41 @@ namespace CodeGeneration.Languages {
       this.PopAndWriteLine("}");
     }
 
+    public override bool TryGetTypespecificNullValue(Type t, out string defaultValue) {
+      if (t.IsNullableType()) {
+        defaultValue = this.GetNull();
+      }
+      else if (t.IsArray) {
+        defaultValue = this.GetNull();
+      }
+      else if (t == typeof(string)) {
+        defaultValue = this.GetNull();
+      }
+      else if (t == typeof(bool)) {
+        defaultValue = "false";
+      }
+      else if (t == typeof(int)) {
+        defaultValue = "0";
+      }
+      else if (t == typeof(decimal)) {
+        defaultValue = "0M";
+      }
+      else if (t == typeof(DateTime)) {
+        defaultValue = "new DateTime(1900,01,01)";
+      }
+      else if (t == typeof(Guid)) {
+        defaultValue = "Guid.Empty";
+      }
+      else if(!t.IsValueType) {
+        defaultValue = this.GetNull();
+      }
+      else {
+        defaultValue = null;
+        return false;
+      }
+      return true;
+    }
+
     public override string GetDefaultValueFromObject(object defaultValue) {
       if (defaultValue == null) {
         return "null";
@@ -254,8 +289,9 @@ namespace CodeGeneration.Languages {
 
     public override void InlineProperty(AccessModifier access, string propName, string propType, string defaultValue = null, bool makeOptional = false) {
 
-      if (makeOptional) {
-        propType = this.GetNullableTypeName(propType);
+      if (makeOptional && string.IsNullOrWhiteSpace(defaultValue)) {
+        //wenn es keinen default gibt, dann müssen wir den typ zu nullable machen
+        //propType = this.GetNullableTypeName(propType);
       }
 
       var line = $"{this.GetAccessModifierString(access)}{propType} {this.Escape(propName)} {{ get; set; }}";
@@ -325,6 +361,9 @@ namespace CodeGeneration.Languages {
     }
 
     public override string GetNullableTypeName(string sourceTypeName) {
+      if (sourceTypeName.EndsWith("?")) {
+        return sourceTypeName;
+      }
       return sourceTypeName + "?";
     }
     public override void BeginFile() {

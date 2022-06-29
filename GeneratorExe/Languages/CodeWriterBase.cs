@@ -205,6 +205,13 @@ namespace CodeGeneration.Languages {
 
     public abstract string GetDefaultValueFromObject(object param);
 
+    /// <summary>
+    /// arrays wont be initialized
+    /// </summary>
+    /// <param name="t"></param>
+    /// <param name="defaultValue"></param>
+    /// <returns></returns>
+    public abstract bool TryGetTypespecificNullValue(Type t, out string defaultValue);
 
     public abstract void EndMethod();
     public abstract void Return(string result = null);
@@ -432,6 +439,25 @@ namespace CodeGeneration.Languages {
       object result = null;
       if(Enum.TryParse (typeof (CommonType), typeName,true, out result)) {
         commonType = (CommonType) result;
+        return true;
+      } else if (typeName == "number") {
+        commonType = CommonType.Int32;
+        return true;
+      }
+      else if (typeName == "boolean") {
+        commonType = CommonType.Boolean;
+        return true;
+      }
+      else if (typeName == "number") {
+        commonType = CommonType.Int32;
+        return true;
+      }
+      else if (typeName == "date") {
+        commonType = CommonType.DateTime;
+        return true;
+      }
+      else if (typeName == "string") {
+        commonType = CommonType.String;
         return true;
       }
       return false;

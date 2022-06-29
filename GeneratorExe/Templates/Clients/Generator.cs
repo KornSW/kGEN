@@ -86,29 +86,40 @@ namespace CodeGeneration.Clients {
 
       writer.WriteLineAndPush($"public partial class {cfg.connectorClassName} {{");
       writer.WriteLine();
+
+      // CONSTRUCTOR
       writer.WriteLineAndPush($"public {cfg.connectorClassName}(string url, string apiToken) {{");
       writer.WriteLine();
       writer.WriteLineAndPush("if (!url.EndsWith(\"/\")) {");
       writer.WriteLine("url = url + \"/\";");
       writer.PopAndWriteLine("}");
       writer.WriteLine();
-
+      // CLIENT FIELD INIT (with URL)
       foreach (Type svcInt in svcInterfaces) {
         string endpointName = svcInt.Name;
-        if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
-          endpointName = endpointName.Substring(1);
+        if (cfg.removeLeadingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeLeadingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(cfg.removeLeadingCharCountForOwnerName);
+        }
+        if (cfg.removeTrailingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeTrailingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(0, endpointName.Length - cfg.removeTrailingCharCountForOwnerName);
         }
         writer.WriteLine($"_{endpointName}Client = new {endpointName}Client(url + \"{writer.Ftl(endpointName)}/\", apiToken);");
       }
       writer.WriteLine();
       writer.PopAndWriteLine("}");
 
+
       foreach (Type svcInt in svcInterfaces) {
 
         string endpointName = svcInt.Name;
-        if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
-          endpointName = endpointName.Substring(1);
+
+        if (cfg.removeLeadingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeLeadingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(cfg.removeLeadingCharCountForOwnerName);
         }
+        if (cfg.removeTrailingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeTrailingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(0, endpointName.Length - cfg.removeTrailingCharCountForOwnerName);
+        }
+
         string svcIntDoc = XmlCommentAccessExtensions.GetDocumentation(svcInt);
 
         writer.WriteLine();
@@ -126,23 +137,26 @@ namespace CodeGeneration.Clients {
       writer.WriteLine();
       writer.PopAndWriteLine("}"); //class
 
+
+
+
       foreach (Type svcInt in svcInterfaces) {
+
         string endpointName = svcInt.Name;
-        if (endpointName[0] == 'I' && Char.IsUpper(endpointName[1])) {
-          endpointName = endpointName.Substring(1);
+
+        if (cfg.removeLeadingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeLeadingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(cfg.removeLeadingCharCountForOwnerName);
         }
+        if (cfg.removeTrailingCharCountForOwnerName > 0 && endpointName.Length >= cfg.removeTrailingCharCountForOwnerName) {
+          endpointName = endpointName.Substring(0, endpointName.Length - cfg.removeTrailingCharCountForOwnerName);
+        }
+
         string svcIntDoc = XmlCommentAccessExtensions.GetDocumentation(svcInt);
 
         if (cfg.appendOwnerNameAsNamespace) {
-          var name = svcInt.Name;
-          if (cfg.removeLeadingCharCountForOwnerName > 0 && name.Length >= cfg.removeLeadingCharCountForOwnerName) {
-            name = name.Substring(cfg.removeLeadingCharCountForOwnerName);
-          }
-          if (cfg.removeTrailingCharCountForOwnerName > 0 && name.Length >= cfg.removeTrailingCharCountForOwnerName) {
-            name = name.Substring(0, name.Length - cfg.removeTrailingCharCountForOwnerName);
-          }
+
           writer.WriteLine();
-          writer.WriteLineAndPush("namespace " + name + " {");
+          writer.WriteLineAndPush("namespace " + endpointName + " {");
         }
 
         writer.WriteLine();
@@ -186,17 +200,14 @@ namespace CodeGeneration.Clients {
               writer.WriteLine($"/// <param name=\"{svcMthPrm.Name}\"> {svcMthPrmDoc} </param>");
             //}
 
-            Type pt = svcMthPrm.ParameterType;
+            Type pt = svcMthPrm.ParameterTypeSafe();
             string pfx = "";
-            if (svcMthPrm.IsOut) {
-              pt = pt.GetElementType();
-              if (svcMthPrm.ParameterType.IsByRef) {
-                pfx = "ref ";
-              }
-              else {
-                pfx = "out ";
-              }
-            }
+
+            svcMthPrm.SwitchByDirection(
+              (inParam) => pfx = "",
+              (refParam) => pfx = "ref ",
+              (outParam) => pfx = "out "
+            );
 
             //bool nullable;
             //var ptName = pt.GetTypeNameSave(out nullable);
@@ -254,15 +265,13 @@ namespace CodeGeneration.Clients {
           writer.WriteLineAndPush($"var requestWrapper = new {svcMth.Name}Request {{");
           int i = 0;
           int pCount = svcMth.GetParameters().Length;
-          foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
-            if (!svcMthPrm.IsOut) {
-              i++;
-              if(i < pCount) {
-                writer.WriteLine($"{svcMthPrm.Name} = {svcMthPrm.Name},");
-              }
-              else {
-                writer.WriteLine($"{svcMthPrm.Name} = {svcMthPrm.Name}");
-              }
+          foreach (ParameterInfo svcMthPrm in svcMth.GetParameters().InboundOnly()) {
+            i++;
+            if(i < pCount) {
+              writer.WriteLine($"{svcMthPrm.Name} = {svcMthPrm.Name},");
+            }
+            else {
+              writer.WriteLine($"{svcMthPrm.Name} = {svcMthPrm.Name}");
             }
           }
           writer.PopAndWriteLine("};");
@@ -271,10 +280,8 @@ namespace CodeGeneration.Clients {
           writer.WriteLine($"string rawResponse = webClient.UploadString(url, rawRequest);");
           writer.WriteLine($"var responseWrapper = JsonConvert.DeserializeObject<{svcMth.Name}Response>(rawResponse);");
 
-          foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
-            if (svcMthPrm.IsOut) {
-              writer.WriteLine($"{svcMthPrm.Name} = responseWrapper.{svcMthPrm.Name};");
-            }
+          foreach (ParameterInfo svcMthPrm in svcMth.GetParameters().OutboundOnly()) {
+            writer.WriteLine($"{svcMthPrm.Name} = responseWrapper.{svcMthPrm.Name};");
           }
 
           if (cfg.throwClientExecptionsFromFaultProperty) {
@@ -286,6 +293,11 @@ namespace CodeGeneration.Clients {
           if (svcMth.ReturnType == null || svcMth.ReturnType == typeof(void)) {
             writer.WriteLine($"return;");
           }
+          //else if (cfg.throwClientExecptionsFromFaultProperty && !svcMth.ReturnType.IsNullableType()) {
+          //  //wenn wir mit fault properties arbeiten, dann sind die returns
+          //  //automatisch nullable, also muss heir der value gelesen werden
+          //  writer.WriteLine($"return responseWrapper.@return.Value;");
+          //}
           else {
             writer.WriteLine($"return responseWrapper.@return;");
           }

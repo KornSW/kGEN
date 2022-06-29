@@ -1,7 +1,7 @@
 ﻿/* Generated From 1.0.0.0
    WARNING: dont edit this code */
 
-import { axios, AxiosInstance } from 'axios';
+import axios, { AxiosInstance } from 'axios';
 
 import * as DTOs from 'my-contract-module/dtos';
 import * as Models from 'my-contract-module/models';

@@ -35,6 +35,8 @@ namespace MyBusinessNamespace {
     [Required()]
     public String FooBar { get; set; } = "default";
 
+    public String OptionalProp { get; set; } = "default";
+
   }
 
 

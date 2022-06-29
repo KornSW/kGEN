@@ -52,6 +52,42 @@ namespace CodeGeneration.Languages {
       }
     }
 
+    public override bool TryGetTypespecificNullValue(Type t, out string defaultValue) {
+
+      if (t.IsNullableType()) {
+        defaultValue = this.GetNull();
+      }
+      else if (t.IsArray) {
+        defaultValue = this.GetNull();
+      }
+      else if (t == typeof(string)) {
+        defaultValue = this.GetNull();
+      }
+      else if (t == typeof(bool)) {
+        defaultValue = "False";
+      }
+      else if (t == typeof(int)) {
+        defaultValue = "0";
+      }
+      else if (t == typeof(decimal)) {
+        defaultValue = "0D";
+      }
+      else if (t == typeof(DateTime)) {
+        defaultValue = "new DateTime(1900,01,01)";
+      }
+      else if (t == typeof(Guid)) {
+        defaultValue = "Guid.Empty";
+      }
+      else if(!t.IsValueType) {
+        defaultValue = this.GetNull();
+      }
+      else {
+        defaultValue = null;
+        return false;
+      }
+      return true;
+    }
+
     public override string GetDefaultValueFromObject(object defaultValue) {
       if (defaultValue == null) {
         return "Nothing";

@@ -98,6 +98,33 @@ namespace CodeGeneration.Languages {
       }
     }
 
+    public override bool TryGetTypespecificNullValue(Type t, out string defaultValue) {
+
+      if (t.IsNullableType()) {
+        defaultValue = this.GetNull();
+      }
+      else if(t.IsArray) {
+        defaultValue = this.GetNull();
+      }
+      else if (t == typeof(string)) {
+        defaultValue = "\"\"";
+      }
+      else if (t == typeof(bool)) {
+        defaultValue = "false";
+      }
+      else if (t == typeof(int)) {
+        defaultValue = "0";
+      }
+      else if (t == typeof(decimal)) {
+        defaultValue = "0M";
+      }
+      else {
+        defaultValue = null;
+        return false;
+      }
+      return true;
+    }
+
     protected override void MethodCore(AccessModifier access, string methodName, string returnTypeName = null, bool isInterfaceDeclartion = false, MethodParamDescriptor[] parameters = null, bool async = false) {
       methodName = this.Escape(methodName);
 

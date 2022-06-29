@@ -34,13 +34,62 @@ namespace CodeGeneration.Inspection {
       }
 
     }
-    public static bool IsInbound(this ParameterInfo extendee) {
-       //return extendee.IsIn || extendee.ParameterType.IsByRef;//|| extendee.IsOptional;
-      return !extendee.IsOut;// || extendee.IsOptional;
 
-
+    /// <summary>
+    /// IN || byRef
+    /// </summary>
+    public static IEnumerable<ParameterInfo> InboundOnly(this IEnumerable<ParameterInfo> extendee) {
+      return extendee.Where((p) => IsInbound(p));
     }
 
+    /// <summary>
+    /// OUT || byRef
+    /// </summary>
+    public static IEnumerable<ParameterInfo> OutboundOnly(this IEnumerable<ParameterInfo> extendee) {
+      return extendee.Where((p) => IsOutbound(p));
+    }
+
+    /// <summary>
+    /// IN || byRef
+    /// </summary>
+    public static void SwitchByDirection(
+      this ParameterInfo extendee,
+      Action<ParameterInfo> callbackForInParams,
+      Action<ParameterInfo> callbackForRefParams,
+      Action<ParameterInfo> callbackForOutParams
+    ) {
+      if (extendee.IsOut) {
+        callbackForOutParams.Invoke(extendee);
+      }
+      else if (extendee.ParameterType.IsByRef) {
+        callbackForRefParams.Invoke(extendee);
+      }
+      else {
+        callbackForInParams.Invoke(extendee);
+      }
+    }
+
+    /// <summary>
+    /// returns the correct Type also for byRef-/out-params where
+    /// the type is usually encapsulated (leading to 'TypeName&' as string representation).
+    /// </summary>
+    public static Type ParameterTypeSafe(this ParameterInfo extendee) {
+      if (extendee.ParameterType.IsByRef) {
+        return extendee.ParameterType.GetElementType();
+      }
+      return extendee.ParameterType;
+    }
+
+    /// <summary>
+    /// IN || byRef
+    /// </summary>
+    public static bool IsInbound(this ParameterInfo extendee) {
+      return !extendee.IsOut;
+    }
+
+    /// <summary>
+    /// OUT || byRef
+    /// </summary>
     public static bool IsOutbound(this ParameterInfo extendee) {
       return extendee.IsOut;
     }

@@ -122,8 +122,15 @@ namespace CodeGeneration.Wrappers {
             }
             nullable = pt.IsNullableType();
             pType = writer.EscapeTypeName(pt, (t) => cfg.nsPrefixForModelTypesUsage);
-          
-   
+
+
+            //bool isOptionalProp = prop.PropertyType.IsNullableType();
+            //if (cfg.requiredPropsByAnnotation) {
+            //  if (!prop.GetCustomAttributes<RequiredAttribute>().Any()) {
+            //    isOptionalProp = true;
+            //  }
+            //}
+
             if (nullable) {
               initializer = writer.GetNull();
             }
@@ -143,15 +150,20 @@ namespace CodeGeneration.Wrappers {
 
               var paramName = svcMthPrm.Name;
               if (cfg.outputLanguage == "TS") {
-                if (svcMthPrm.IsOptional) {
-                  paramName = paramName + "?";
-                }
+                //if (svcMthPrm.IsOptional) {
+                //  paramName = paramName + "?";
+                //}
+                initializer = null;
               }
               else if (!svcMthPrm.IsOptional && cfg.generateDataAnnotationsForLocalModels) {
                 writer.AttributesLine("Required");
               }
      
-              writer.InlineProperty(AccessModifier.Public, paramName, pType, initializer);
+
+              //######### PROPERTY #############################################################################
+              writer.InlineProperty(AccessModifier.Public, paramName, pType, initializer, svcMthPrm.IsOptional);
+              //################################################################################################
+
               //writer.WriteLine("  public " + pType + " " + svcMthPrm.Name + " { get; set; }" + initializer);
             }
 
@@ -218,33 +230,51 @@ namespace CodeGeneration.Wrappers {
 
               var paramName = svcMthPrm.Name;
               if (cfg.outputLanguage == "TS") {
-                if (svcMthPrm.IsOptional) {
-                  paramName = paramName + "?";
-                }
+                //if (svcMthPrm.IsOptional) {
+                //  paramName = paramName + "?";
+                //}
+                initializer = null;
               }
               else if (!svcMthPrm.IsOptional) {
                 writer.AttributesLine("Required");
               }
 
-              writer.InlineProperty(AccessModifier.Public, paramName, pType, initializer);
+              writer.InlineProperty(AccessModifier.Public, paramName, pType, initializer, svcMthPrm.IsOptional);
               //writer.WriteLine("  public " + pType + " " + svcMthPrm.Name + " { get; set; }" + initializer);
             }
 
           }//foreach Param
 
+          string defaultValue = null;
+          string typeName = "";
+
+          typeName = writer.GetCommonTypeName(CommonType.String);
+          if (cfg.outputLanguage != "TS") {
+            if (!writer.TryGetTypespecificNullValue(typeof(string),out defaultValue)) {
+              typeName = writer.GetNullableTypeName(typeName);
+            }
+          }
+          else {
+            //bei TS wird die optionalität nicht über den typ sondern über die prop definiert
+          }
           if (cfg.generateFaultProperty) {
             writer.WriteLine();
             writer.Summary($"This field contains error text equivalent to an Exception message! (note that only 'fault' XOR 'return' can have a value != null)", true);
             writer.InlineProperty(
               AccessModifier.Public,
               "fault",
-              writer.GetCommonTypeName(CommonType.String),
-              writer.GetNull()
+              typeName,
+              defaultValue,
+              true
             );
             //writer.WriteLine("  public string fault { get; set; } = null;");
           }
 
           if (svcMth.ReturnType != null && svcMth.ReturnType != typeof(void)) {
+            string defaultValueForReturn = null;
+
+            typeName = writer.EscapeTypeName(svcMth.ReturnType, (t) => cfg.nsPrefixForModelTypesUsage);
+
             writer.WriteLine();
             string retTypeDoc = XmlCommentAccessExtensions.GetDocumentation(svcMth.ReturnType);
             if (!String.IsNullOrWhiteSpace(retTypeDoc)) {
@@ -253,16 +283,32 @@ namespace CodeGeneration.Wrappers {
             else {
               writer.Summary($"Return-Value of '{svcMth.Name}' ({svcMth.ReturnType.Name})", true);
             }
-            var paramName = writer.EscapeSymbolName("return");
+            var returnParamName = writer.EscapeSymbolName("return");
             if (!cfg.generateFaultProperty) {
               if (cfg.outputLanguage != "TS") {
                 writer.AttributesLine("Required");
               }
             }
+            else {
+              //in diesem fall MUSS die property optional sein!!!
+
+              if (cfg.outputLanguage != "TS") { 
+                if (!writer.TryGetTypespecificNullValue(svcMth.ReturnType, out defaultValueForReturn)) {
+                  typeName = writer.GetNullableTypeName(typeName);
+                }
+
+              }
+              else {
+                //bei TS wird die optionalität nicht über den typ sondern über die prop definiert
+              }
+
+            }
             writer.InlineProperty(
               AccessModifier.Public,
-              paramName,
-              writer.EscapeTypeName(svcMth.ReturnType, (t) => cfg.nsPrefixForModelTypesUsage)
+              returnParamName,
+              typeName,
+              defaultValueForReturn,
+              cfg.generateFaultProperty
             );
             //writer.WriteLine("  public " + svcMth.ReturnType.Name + " @return { get; set; }");
           }

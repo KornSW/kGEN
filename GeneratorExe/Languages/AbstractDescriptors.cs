@@ -42,10 +42,7 @@ namespace CodeGeneration {
 
     public static MethodParamDescriptor FromParameterInfo(ParameterInfo parameterInfo, Func<Type, string> customTypeNameEscapingMethod, CodeWriterBase wtr) {
 
-      Type pType = parameterInfo.ParameterType;
-      if (parameterInfo.IsOut) {
-        pType = pType.GetElementType();
-      }
+      Type pType = parameterInfo.ParameterTypeSafe();
 
       CommonType t = CommonType.NotCommon;
       string ct = null;
