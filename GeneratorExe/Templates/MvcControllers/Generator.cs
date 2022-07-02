@@ -156,17 +156,15 @@ namespace CodeGeneration.MvcControllers {
           writer.WriteLine($"var response = new {svcMth.Name}Response();");
 
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
-            if (svcMthPrm.IsOut) {
-              if (svcMthPrm.ParameterType.IsByRef) {
-                writer.WriteLine($"var {writer.Ftl(svcMthPrm.Name)}Buffer = args.{writer.Ftl(svcMthPrm.Name)};");
-              }
+            if (svcMthPrm.IsOutbound() && svcMthPrm.IsInbound()) {
+              writer.WriteLine($"var {writer.Ftl(svcMthPrm.Name)}Buffer = args.{writer.Ftl(svcMthPrm.Name)};");
             }
           }
 
           var @params = new List<string>();
           foreach (ParameterInfo svcMthPrm in svcMth.GetParameters()) {
-            if (svcMthPrm.IsOut) {
-              if (svcMthPrm.ParameterType.IsByRef) {
+            if (svcMthPrm.IsOutbound()) {
+              if (svcMthPrm.IsInbound()) {
                 @params.Add($"ref {writer.Ftl(svcMthPrm.Name)}Buffer");
               }
               else {

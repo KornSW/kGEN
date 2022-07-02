@@ -7,6 +7,7 @@ xcopy .\GeneratorExe\bin\kGEN.* %USERPROFILE%\.nuget\packages\kgen.generator\1.2
 
 xcopy .\GeneratorExe\bin\kGEN.* %USERPROFILE%\.nuget\packages\kgen.generator\1.3.0.543\tools\bin /Y
 xcopy .\GeneratorExe\bin\*.dll %USERPROFILE%\.nuget\packages\kgen.generator\1.3.0.543\tools\bin /Y
-
+xcopy .\GeneratorExe\bin\kGEN.* %USERPROFILE%\.nuget\packages\kgen.generator\1.4.2.593\tools\bin /Y
+xcopy .\GeneratorExe\bin\*.dll %USERPROFILE%\.nuget\packages\kgen.generator\1.4.2.593\tools\bin /Y
 
 PAUSE
