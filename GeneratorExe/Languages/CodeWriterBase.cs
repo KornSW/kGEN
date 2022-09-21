@@ -14,7 +14,9 @@ namespace CodeGeneration.Languages {
 
     private TextWriter _Wtr;
     private CodeWritingSettings _Cfg;
+
     private int _CurrentIndentLevel = 0;
+    private bool _IncompleteLine = false;
 
     private List<String> _NamespacesToImport = new List<String>();
 
@@ -116,7 +118,9 @@ namespace CodeGeneration.Languages {
       if(_CurrentIndentLevel < 0) {
         throw new Exception("Indent-Level < 0");
       }
-
+      if (_IncompleteLine) {
+        suppressIndentOnFirstLine = true;
+      }
       if (output.Contains(Environment.NewLine)) {
         bool endBreak = output.EndsWith(Environment.NewLine);
         using (StringReader rdr = new StringReader(output)) {
@@ -149,6 +153,8 @@ namespace CodeGeneration.Languages {
         }
         _Wtr.Write(output);
       }
+
+      _IncompleteLine = !(output.EndsWith(Environment.NewLine));
     }
 
     /// <summary>
@@ -180,9 +186,10 @@ namespace CodeGeneration.Languages {
 
     public abstract void BeginClass(AccessModifier access, string typeName, string inherits = null, bool partial = false);
     public abstract void BeginInterface(AccessModifier access, string typeName, string inherits = null, bool partial = false);
-
+    public abstract void Enum(AccessModifier access, string typeName, Dictionary<string, int> enumValues, Dictionary<string, string> enumComments);
     public abstract void EndClass();
     public abstract void EndInterface();
+
 
     public void MethodInterface(string methodName, string returnTypeName = null,MethodParamDescriptor[] parameters = null, bool async = false) {
       this.MethodCore(AccessModifier.None, methodName, returnTypeName, true, parameters, async);
@@ -437,7 +444,7 @@ namespace CodeGeneration.Languages {
 
     public static bool TryResolveToCommonType(string typeName, ref CommonType commonType) {
       object result = null;
-      if(Enum.TryParse (typeof (CommonType), typeName,true, out result)) {
+      if(System.Enum.TryParse (typeof (CommonType), typeName,true, out result)) {
         commonType = (CommonType) result;
         return true;
       } else if (typeName == "number") {

@@ -23,7 +23,6 @@ namespace MyBusinessNamespace {
 
   }
 
-
   /// <summary>
   /// MMMMMMMMMMMMMMMMMMM
   /// </summary>
@@ -37,9 +36,16 @@ namespace MyBusinessNamespace {
 
     public String OptionalProp { get; set; } = "default";
 
+    [Required()]
+    public MyEnum MyEnumProp{ get; set; } = MyEnum.Bar;
+
   }
 
-
-
+  public enum MyEnum {
+    Foo = 1,
+    /// <summary> this is the Magic of BAR! </summary>
+    Bar = 2,
+    Baz = 1
+  }
 
 }

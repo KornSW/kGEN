@@ -28,7 +28,7 @@
            },
 
            // Output:
-           template = "Clients",     // <- choose between: Models|Wrappers|MvcControllers|Clients|Interfaces
+           template = "Models",     // <- choose between: Models|Wrappers|MvcControllers|Clients|Interfaces
            
 
            outputLanguage = "TS",   // <- choose between: C#|VB|TS|PHP

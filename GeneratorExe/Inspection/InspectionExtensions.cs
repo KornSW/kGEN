@@ -10,6 +10,28 @@ namespace CodeGeneration.Inspection {
 
   internal static class InspectionExtensions {
 
+    public static void ReadEnumMembers(
+      this Type extendee,
+      Dictionary<string, int> members,
+      Dictionary<string, string> comments = null
+    ) {
+      if (extendee == null || !extendee.IsEnum) {
+        return;
+      }
+      foreach (FieldInfo field in extendee.GetFields()) {
+        if (field.IsStatic) {
+          var value = field.GetValue(null);
+          members.Add(field.Name, (int)value);
+          if(comments != null) {
+            string doc = XmlCommentAccessExtensions.GetDocumentation(field, false);
+            if (!String.IsNullOrWhiteSpace(doc)) {
+              comments.Add(field.Name, doc);
+            }
+          }
+        }
+      }
+    }
+
     public static Type Obj2Null(this Type extendee) {
       if(extendee == null || extendee == typeof(Object)) {
         return null;

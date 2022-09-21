@@ -52,6 +52,21 @@ namespace CodeGeneration.Languages {
       }
     }
 
+    public override void Enum(
+      AccessModifier access,
+      string typeName,
+      Dictionary<string, int> enumValues,
+      Dictionary<string, string> enumComments) {
+      this.WriteLineAndPush($"{this.GetAccessModifierString(access)}Enum {typeName}");
+      foreach (string fieldName in enumValues.Keys) {
+        if (enumComments.ContainsKey(fieldName)) {
+          this.Summary(enumComments[fieldName], true);
+        }
+        this.WriteLine(fieldName + " = " + enumValues[fieldName].ToString());
+      }
+      this.PopAndWriteLine("End Enum");
+    }
+
     public override bool TryGetTypespecificNullValue(Type t, out string defaultValue) {
 
       if (t.IsNullableType()) {

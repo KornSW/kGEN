@@ -259,6 +259,11 @@ namespace CodeGeneration.ConnectorsAxiosJS {
             }
           }
           else {
+
+            writer.WriteLineAndPush("if (responseWrapper.return == undefined){");
+            writer.WriteLine("throw { message: 'response dto contains no \"return\" value!'};");
+            writer.PopAndWriteLine("}");
+            
             var retTypeName = svcMth.ReturnType.Name;
             if (outParams.Any()) {
               writer.WriteLine($"return {{{String.Join(", ", outParams.Select((t) => t.Item1 + ": responseWrapper." + t.Item1))}, return: responseWrapper.return}};");

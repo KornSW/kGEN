@@ -64,6 +64,21 @@ namespace CodeGeneration.Languages {
       }
     }
 
+    public override void Enum(
+      AccessModifier access,
+      string typeName,
+      Dictionary<string, int> enumValues,
+      Dictionary<string, string> enumComments) {
+      this.WriteLineAndPush($"abstract class {typeName} {{");
+      foreach (string fieldName in enumValues.Keys) {
+        if (enumComments.ContainsKey(fieldName)) {
+          this.Summary(enumComments[fieldName], true);
+        }
+        this.WriteLine($"const {fieldName} = {enumValues[fieldName]};");
+      }
+      this.PopAndWriteLine("}");
+    }
+
     public override void BeginInterface(AccessModifier access, string typeName, string inherits = null, bool partial = false) {
       typeName = this.Escape(typeName);
       if (string.IsNullOrWhiteSpace(inherits)) {

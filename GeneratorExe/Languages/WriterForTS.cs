@@ -68,6 +68,30 @@ namespace CodeGeneration.Languages {
       }
     }
 
+    public override void Enum(
+      AccessModifier access,
+      string typeName,
+      Dictionary<string,int> enumValues,
+      Dictionary<string,string> enumComments) {
+      this.WriteLineAndPush($"export enum {typeName} {{");
+      bool first = true;
+      foreach (string fieldName in enumValues.Keys) {
+        if (first) {
+          first = false;
+        }
+        else {
+          this.Write(",");
+          this.WriteLine();
+        }
+        if (enumComments.ContainsKey(fieldName)) {
+          this.Summary(enumComments[fieldName], true);
+        }
+        this.Write($"{fieldName} = {enumValues[fieldName]}");
+      }
+      this.WriteLine();
+      this.PopAndWriteLine("}");
+    }
+
     public override void EndClass() {
       this.PopAndWriteLine("}");
     }
@@ -236,20 +260,20 @@ namespace CodeGeneration.Languages {
         this.WriteLine($" */");
       }
       else {
-        this.WriteLine($"// " + text.Replace("\n", " ").Replace("  ", " "));
+        this.Write($"/** " + text.Replace("\n", " ").Replace("  ", " "));
         if (parameters != null && parameters.Any()) {
-          //this.WriteLine($"//");
+          this.WriteLine();
           foreach (var paramSummary in parameters) {
             if (!string.IsNullOrWhiteSpace(paramSummary.Description)) {
-              this.WriteLine($"// @param {paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
+              this.WriteLine($" * @param {paramSummary.ParamName} " + paramSummary.Description.Replace("\n", " ").Replace("  ", " "));
             }
             else {
-              this.WriteLine($"// @param {paramSummary.ParamName}");
+              this.WriteLine($" * @param {paramSummary.ParamName}");
             }
           }
         }
+        this.WriteLine($" */");
       }
-
     }
 
     public override string GenerateAnonymousTypeDeclaration(Dictionary<string, string> fieldTypesByName, bool inline) {
@@ -339,7 +363,7 @@ namespace CodeGeneration.Languages {
         //in ts, the name is declaringthe nullability
         propName = propName + "?";
       }
-      else if (string.IsNullOrWhiteSpace(defaultValue) || defaultValue != this.GetNull()) {
+      else if (string.IsNullOrWhiteSpace(defaultValue) || defaultValue == this.GetNull()) {
         CommonType ct = CommonType.NotCommon;
         if(CodeWriterBase.TryResolveToCommonType(propType, ref ct)) {
           defaultValue = this.GetDefaultValueFromCommonType(ct);

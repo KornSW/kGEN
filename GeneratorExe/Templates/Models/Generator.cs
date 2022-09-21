@@ -166,87 +166,104 @@ namespace CodeGeneration.Models {
         }
 
         //TODO: Obsolete-Attributes on Class-Level (including comments)
-
-        if (modelTypeToGenerate.IsClass) {
-          innerWriter.BeginClass(AccessModifier.Public ,modelTypeToGenerate.Name, innerWriter.EscapeTypeName ( modelTypeToGenerate.BaseType.Obj2Null()));    
+        if (modelTypeToGenerate.IsEnum) {
+          var enumValues = new Dictionary<string, int>();
+          var enumComments = new Dictionary<string, string>();
+          modelTypeToGenerate.ReadEnumMembers(enumValues, enumComments);
+          innerWriter.Enum(AccessModifier.Public, modelTypeToGenerate.Name, enumValues, enumComments);
         }
         else {
-          innerWriter.BeginInterface(AccessModifier.Public, modelTypeToGenerate.Name, innerWriter.EscapeTypeName(modelTypeToGenerate.BaseType.Obj2Null()));
-        }
-
-        foreach (PropertyInfo prop in modelTypeToGenerate.GetProperties()) {
-          string propDoc = XmlCommentAccessExtensions.GetDocumentation(prop, true);
-
-          innerWriter.WriteLine();
-
-          if (!String.IsNullOrWhiteSpace(propDoc)) {
-            innerWriter.Summary(propDoc, dumpToSingleLine: false);
-          }
-
-          var attribs = prop.GetCustomAttributes();
-
-          if (cfg.generateDataAnnotationsForLocalModels) {
-            if (prop.GetCustomAttributes<RequiredAttribute>().Any()) {
-              innerWriter.AttributesLine("Required");
-            }
-            ObsoleteAttribute oa = prop.GetCustomAttributes<ObsoleteAttribute>().FirstOrDefault();
-            if (oa != null) {
-              innerWriter.AttributesLine("Obsolete(\"" + oa.Message + "\")");
-            }
-            MaxLengthAttribute mla = prop.GetCustomAttributes<MaxLengthAttribute>().FirstOrDefault();
-            if (mla != null) {
-              innerWriter.AttributesLine("MaxLength(" + mla.Length.ToString() + ")");
-            }
-          }
-
-          if (cfg.generateNavigationAnnotationsForLocalModels) {
-            //here we use strings, because we dont want to have a reference to a nuget-pkg within this template
-            if (attribs.Where((a) => a.GetType().Name == "FixedAfterCreationAttribute").Any()) {
-              innerWriter.AttributesLine("FixedAfterCreation");
-            }
-            if (attribs.Where((a) => a.GetType().Name == "SystemInternalAttribute").Any()) {
-              innerWriter.AttributesLine("SystemInternal");
-            }
-            if (attribs.Where((a) => a.GetType().Name == "LookupAttribute").Any()) {
-              innerWriter.AttributesLine("Lookup");
-            }
-            if (attribs.Where((a) => a.GetType().Name == "RefererAttribute").Any()) {
-              innerWriter.AttributesLine("Referer");
-            }
-            if (attribs.Where((a) => a.GetType().Name == "PrincipalAttribute").Any()) {
-              innerWriter.AttributesLine("Principal");
-            }
-            if (attribs.Where((a) => a.GetType().Name == "DependentAttribute").Any()) {
-              innerWriter.AttributesLine("Dependent");
-            }
-          }
-
-          bool isOptionalProp = prop.PropertyType.IsNullableType();
-          if (cfg.requiredPropsByAnnotation) {
-            if (!prop.GetCustomAttributes<RequiredAttribute>().Any()) {
-              isOptionalProp = true;
-            }
-          }
-          string propTypeName = innerWriter.EscapeTypeName(prop.PropertyType);
 
           if (modelTypeToGenerate.IsClass) {
-            innerWriter.InlineProperty( AccessModifier.Public, prop.Name, propTypeName, null, isOptionalProp);
+            innerWriter.BeginClass(AccessModifier.Public ,modelTypeToGenerate.Name, innerWriter.EscapeTypeName ( modelTypeToGenerate.BaseType.Obj2Null()));    
+          }
+          else if(modelTypeToGenerate.IsInterface){
+            innerWriter.BeginInterface(AccessModifier.Public, modelTypeToGenerate.Name, innerWriter.EscapeTypeName(modelTypeToGenerate.BaseType.Obj2Null()));
+          }
+     
+          foreach (PropertyInfo prop in modelTypeToGenerate.GetProperties()) {
+            string propDoc = XmlCommentAccessExtensions.GetDocumentation(prop, true);
+
+            innerWriter.WriteLine();
+
+            if (!String.IsNullOrWhiteSpace(propDoc)) {
+              innerWriter.Summary(propDoc, dumpToSingleLine: false);
+            }
+
+            var attribs = prop.GetCustomAttributes();
+
+            if (cfg.generateDataAnnotationsForLocalModels) {
+              if (prop.GetCustomAttributes<RequiredAttribute>().Any()) {
+                innerWriter.AttributesLine("Required");
+              }
+              ObsoleteAttribute oa = prop.GetCustomAttributes<ObsoleteAttribute>().FirstOrDefault();
+              if (oa != null) {
+                innerWriter.AttributesLine("Obsolete(\"" + oa.Message + "\")");
+              }
+              MaxLengthAttribute mla = prop.GetCustomAttributes<MaxLengthAttribute>().FirstOrDefault();
+              if (mla != null) {
+                innerWriter.AttributesLine("MaxLength(" + mla.Length.ToString() + ")");
+              }
+            }
+
+            if (cfg.generateNavigationAnnotationsForLocalModels) {
+              //here we use strings, because we dont want to have a reference to a nuget-pkg within this template
+              if (attribs.Where((a) => a.GetType().Name == "FixedAfterCreationAttribute").Any()) {
+                innerWriter.AttributesLine("FixedAfterCreation");
+              }
+              if (attribs.Where((a) => a.GetType().Name == "SystemInternalAttribute").Any()) {
+                innerWriter.AttributesLine("SystemInternal");
+              }
+              if (attribs.Where((a) => a.GetType().Name == "LookupAttribute").Any()) {
+                innerWriter.AttributesLine("Lookup");
+              }
+              if (attribs.Where((a) => a.GetType().Name == "RefererAttribute").Any()) {
+                innerWriter.AttributesLine("Referer");
+              }
+              if (attribs.Where((a) => a.GetType().Name == "PrincipalAttribute").Any()) {
+                innerWriter.AttributesLine("Principal");
+              }
+              if (attribs.Where((a) => a.GetType().Name == "DependentAttribute").Any()) {
+                innerWriter.AttributesLine("Dependent");
+              }
+            }
+
+            bool isOptionalProp = prop.PropertyType.IsNullableType();
+            if (cfg.requiredPropsByAnnotation) {
+              if (!prop.GetCustomAttributes<RequiredAttribute>().Any()) {
+                isOptionalProp = true;
+              }
+            }
+            string propTypeName = innerWriter.EscapeTypeName(prop.PropertyType);
+
+            if (modelTypeToGenerate.IsClass) {
+              string defaultValue = null;
+              if (!isOptionalProp && prop.PropertyType.IsEnum) {
+
+                //HACK: kommen wir an den default?
+                string defaultEnumFieldName = Enum.GetNames(prop.PropertyType).First();
+
+                defaultValue = $"{propTypeName}.{defaultEnumFieldName}";
+              }
+              innerWriter.InlineProperty( AccessModifier.Public, prop.Name, propTypeName, defaultValue, isOptionalProp);
+            }
+            else {
+              //interfaces have no a.m.
+              innerWriter.InlineProperty(AccessModifier.None , prop.Name, propTypeName, null, isOptionalProp);
+            }
+
+          }
+
+          innerWriter.WriteLine();
+          if (modelTypeToGenerate.IsClass) {
+            innerWriter.EndClass();
           }
           else {
-            //interfaces have no a.m.
-            innerWriter.InlineProperty(AccessModifier.None , prop.Name, propTypeName, null, isOptionalProp);
+            innerWriter.EndInterface();
           }
+          //innerWriter.WriteLine();
 
-        }
-
-        innerWriter.WriteLine();
-        if (modelTypeToGenerate.IsClass) {
-          innerWriter.EndClass();
-        }
-        else {
-          innerWriter.EndInterface();
-        }
-        //innerWriter.WriteLine();
+        } //end not enum
 
       }
 
