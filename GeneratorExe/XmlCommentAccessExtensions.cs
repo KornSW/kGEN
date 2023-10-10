@@ -50,17 +50,27 @@ namespace System.Reflection {
 
     /// <summary> reads summary and parameter documentation from the xml-file (if exsists) </summary>
     public static string GetDocumentation(this ParameterInfo parameterInfo, bool singleLine = true) {
-      LoadXmlDocumentation(parameterInfo.Member.DeclaringType.Assembly, parameterInfo.Member.DeclaringType.Namespace);
-      if (parameterInfo.Member.MemberType.HasFlag(MemberTypes.Method)) {
-        string rawDoc = GetRawXmlDocumentationForMethod((MethodInfo)parameterInfo.Member);
-        return PickParamFromXml(rawDoc, parameterInfo.Name, singleLine);
+      try {
+        LoadXmlDocumentation(parameterInfo.Member.DeclaringType.Assembly, parameterInfo.Member.DeclaringType.Namespace);
+        if (parameterInfo.Member.MemberType.HasFlag(MemberTypes.Method)) {
+          string rawDoc = GetRawXmlDocumentationForMethod((MethodInfo)parameterInfo.Member);
+          return PickParamFromXml(rawDoc, parameterInfo.Name, singleLine);
+        }
+        return null;
       }
-      return null;
+      catch (Exception ex) {
+        return null;
+      }
     }
 
     /// <summary> reads summary and parameter documentation from the xml-file (if exsists) </summary>
     public static string GetDocumentation(this MemberInfo memberInfo, bool singleLine = true) {
-      LoadXmlDocumentation(memberInfo.DeclaringType.Assembly, memberInfo.DeclaringType.Namespace);
+      try {
+        LoadXmlDocumentation(memberInfo.DeclaringType.Assembly, memberInfo.DeclaringType.Namespace);
+      }
+      catch (Exception ex) {
+        return null;
+      }
 
       if (memberInfo.MemberType.HasFlag(MemberTypes.Property)) {
         return ((PropertyInfo)memberInfo).GetDocumentation(singleLine);
@@ -85,65 +95,90 @@ namespace System.Reflection {
     }
 
     private static string GetRawXmlDocumentationForType(this Type type) {
-      LoadXmlDocumentation(type.Assembly, type.Namespace);
+      try {
+        LoadXmlDocumentation(type.Assembly, type.Namespace);
 
-      string key = "T:" + BuildMemberKeyString(type.FullName, null);
-      loadedXmlDocumentation.TryGetValue(key, out string documentation);
+        string key = "T:" + BuildMemberKeyString(type.FullName, null);
+        loadedXmlDocumentation.TryGetValue(key, out string documentation);
 
-      return documentation;
+        return documentation;
+      }
+      catch (Exception ex) {
+        return null;
+      }
     }
 
     private static string GetRawXmlDocumentationForProperty(this PropertyInfo propertyInfo, bool singleLine = true) {
-      LoadXmlDocumentation(propertyInfo.DeclaringType.Assembly, propertyInfo.DeclaringType.Namespace);
+      try {
+        LoadXmlDocumentation(propertyInfo.DeclaringType.Assembly, propertyInfo.DeclaringType.Namespace);
      
-      string key = "P:" + BuildMemberKeyString(propertyInfo.DeclaringType.FullName, propertyInfo.Name);
-      loadedXmlDocumentation.TryGetValue(key, out string documentation);
+        string key = "P:" + BuildMemberKeyString(propertyInfo.DeclaringType.FullName, propertyInfo.Name);
+        loadedXmlDocumentation.TryGetValue(key, out string documentation);
 
-      return documentation;
+        return documentation;
+      }
+      catch (Exception ex) {
+        return null;
+      }
     }
 
     private static string GetRawXmlDocumentationForMethod(MethodInfo methodInfo) {
-      LoadXmlDocumentation(methodInfo.DeclaringType.Assembly, methodInfo.DeclaringType.Namespace);
+      try {
+        LoadXmlDocumentation(methodInfo.DeclaringType.Assembly, methodInfo.DeclaringType.Namespace);
 
-      var paramTypeNames = methodInfo.GetParameters().Select((p) => {
-        string result = p.ParameterType.FullName;
-        if (p.ParameterType.IsConstructedGenericType) {
-          result = p.ParameterType.GetGenericTypeDefinition().FullName;
-          result = result.Substring(0, result.IndexOf ('`'));
-          result = result + "{" + string.Join(",", p.ParameterType.GetGenericArguments().Select(ga => ga.FullName)) + "}";
+        var paramTypeNames = methodInfo.GetParameters().Select((p) => {
+          string result = p.ParameterType.FullName;
+          if (p.ParameterType.IsConstructedGenericType) {
+            result = p.ParameterType.GetGenericTypeDefinition().FullName;
+            result = result.Substring(0, result.IndexOf ('`'));
+            result = result + "{" + string.Join(",", p.ParameterType.GetGenericArguments().Select(ga => ga.FullName)) + "}";
+          }
+          if (p.IsOut) {
+            result = result.Replace("&", "") + "@";
+          }
+          return result;
+        }).ToArray();
+        string paramSignature = "";
+        if (paramTypeNames.Length > 0) { //no () when no param!!!!
+          paramSignature = "(" + String.Join(",", paramTypeNames) + ")";
         }
-        if (p.IsOut) {
-          result = result.Replace("&", "") + "@";
-        }
-        return result;
-      }).ToArray();
-      string paramSignature = "";
-      if (paramTypeNames.Length > 0) { //no () when no param!!!!
-        paramSignature = "(" + String.Join(",", paramTypeNames) + ")";
+
+        string key = "M:" + BuildMemberKeyString(methodInfo.DeclaringType.FullName, methodInfo.Name) + paramSignature;
+        loadedXmlDocumentation.TryGetValue(key, out string documentation);
+
+        return documentation;
       }
-
-      string key = "M:" + BuildMemberKeyString(methodInfo.DeclaringType.FullName, methodInfo.Name) + paramSignature;
-      loadedXmlDocumentation.TryGetValue(key, out string documentation);
-
-      return documentation;
+      catch (Exception ex) {
+        return null;
+      }
     }
 
     private static string GetRawXmlDocumentationForField(this FieldInfo fieldInfo, bool singleLine = true) {
-      LoadXmlDocumentation(fieldInfo.DeclaringType.Assembly, fieldInfo.DeclaringType.Namespace);
+      try {
+        LoadXmlDocumentation(fieldInfo.DeclaringType.Assembly, fieldInfo.DeclaringType.Namespace);
      
-      string key = "F:" + BuildMemberKeyString(fieldInfo.DeclaringType.FullName, fieldInfo.Name);
-      loadedXmlDocumentation.TryGetValue(key, out string documentation);
+        string key = "F:" + BuildMemberKeyString(fieldInfo.DeclaringType.FullName, fieldInfo.Name);
+        loadedXmlDocumentation.TryGetValue(key, out string documentation);
 
-      return documentation;
+        return documentation;
+      }
+      catch (Exception ex) {
+        return null;
+      }
     }
 
     private static string GetRawXmlDocumentationForEvent(this EventInfo eventInfo, bool singleLine = true) {
-      LoadXmlDocumentation(eventInfo.DeclaringType.Assembly, eventInfo.DeclaringType.Namespace);
+      try {
+        LoadXmlDocumentation(eventInfo.DeclaringType.Assembly, eventInfo.DeclaringType.Namespace);
 
-      string key = "E:" + BuildMemberKeyString(eventInfo.DeclaringType.FullName, eventInfo.Name);
-      loadedXmlDocumentation.TryGetValue(key, out string documentation);
+        string key = "E:" + BuildMemberKeyString(eventInfo.DeclaringType.FullName, eventInfo.Name);
+        loadedXmlDocumentation.TryGetValue(key, out string documentation);
 
-      return documentation;
+        return documentation;
+      }
+      catch (Exception ex) {
+        return null;
+      }
     }
 
     private static void LoadXmlDocumentation(Assembly assembly, string ns) {
